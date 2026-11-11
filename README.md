@@ -58,6 +58,8 @@ Web Push auf iOS benötigt eine unterstützte iOS-Version und eine installierte 
 
 ## Firebase und Cloudflare einrichten
 
+Cloudflare Pages und Workers Static Assets werden unterstützt. Beim Deploy-Befehl `npx wrangler deploy` gilt der Workers-Abschnitt der Deployment-Anleitung; `wrangler.jsonc` baut die App und verwendet den nativen SPA-Fallback.
+
 Die vollständige Schrittfolge mit öffentlichen Umgebungsvariablen, Auth-Domains, Firestore-Regeln, Cloud Functions, Web-Push-Secrets und Cloudflare Pages steht in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ```bash
