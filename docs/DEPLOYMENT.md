@@ -174,9 +174,32 @@ Emulatoren liefern keinen echten Apple-/Browser-Push und keinen produktiven Clou
 5. Deployment starten. Danach die endgültige `*.pages.dev`-Domain bzw. eigene Domain in Firebase Authentication autorisieren.
 6. Eigene Domain unter **Custom domains** verbinden und gültiges HTTPS abwarten.
 
-`public/_redirects` sorgt für den SPA-Fallback. `public/_headers` und der Service Worker steuern Sicherheits-/Cacheverhalten. `sw.js` und das Manifest dürfen nicht durch einen dauerhaft unveränderlichen Browsercache am Update gehindert werden. Build-Assets mit Hash dürfen langfristig gecacht werden.
+Der SPA-Fallback wird von Pages automatisch bereitgestellt, solange keine oberste `404.html` existiert. Eine globale `_redirects`-Regel auf `/index.html` ist nicht nötig und wird bewusst vermieden: Workers Static Assets lehnt sie wegen möglicher Endlosschleifen ab. `public/_headers` und der Service Worker steuern Sicherheits-/Cacheverhalten. `sw.js` und das Manifest dürfen nicht durch einen dauerhaft unveränderlichen Browsercache am Update gehindert werden. Build-Assets mit Hash dürfen langfristig gecacht werden.
 
 Cloudflare Pages hostet das gebaute Frontend. Firebase Functions werden separat im Firebase-Projekt betrieben. Pages stellt diese Jobs nicht automatisch bereit.
+
+### Alternative: Cloudflare Workers mit Static Assets
+
+Ein Deployment-Log mit `npx wrangler deploy` verwendet **Workers**, nicht den Pages-Buildablauf. Auch dieser Weg wird durch die eingecheckte `wrangler.jsonc` unterstützt. Es ist kein zusätzlicher Worker-Server und kein Cloudflare-Vite-Plugin erforderlich.
+
+Im bestehenden Cloudflare-Workers-Projekt unter **Settings → Build** einstellen:
+
+- Repository-Branch: den Branch mit diesem Fix verwenden bzw. den Fix zuerst nach `main` übernehmen.
+- Root-Verzeichnis: Repository-Wurzel.
+- Separater Build-Befehl: leer lassen; Wrangler führt durch `build.command` selbst `npm run build` aus.
+- Deploy-Befehl: `npx wrangler deploy`.
+- Worker-Name: `habit-app-chatgpt` (muss mit `wrangler.jsonc` übereinstimmen).
+- Öffentliche `VITE_*`-Werte als Buildvariablen setzen, falls Firebase genutzt wird.
+
+Dann ein neues Deployment des aktuellen Commits starten. Wrangler verwendet `dist` als Asset-Verzeichnis und den nativen SPA-Fallback `single-page-application`. Die eingecheckte Konfiguration verhindert die automatische Projektumschreibung aus dem fehlgeschlagenen Log. Sollte eine frühere Auto-Konfiguration im Repository gespeichert worden sein, zusätzliche Cloudflare-Vite-Plugin-Einträge und `.wrangler/deploy/config.json` vor einem sauberen Neubuild entfernen; dieser Repository-Stand benötigt sie nicht.
+
+Ohne Veröffentlichung lässt sich die Paketierung lokal prüfen:
+
+```bash
+npx wrangler deploy --dry-run
+```
+
+Firebase Functions werden weiterhin separat bereitgestellt. Ein erfolgreicher Dry Run bestätigt die lokale Paketierung, noch keine erfolgreiche Cloudflare-API-Veröffentlichung.
 
 ## GitHub Actions
 

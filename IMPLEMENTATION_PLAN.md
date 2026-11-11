@@ -1,5 +1,9 @@
 # Implementierungsplan
 
+Deployment-Korrektur: Die globale `_redirects`-Regel wurde entfernt, da Workers Static Assets sie mit Fehler 100324 als Endlosschleife ablehnt. `wrangler.jsonc` konfiguriert den Build, `dist` und den nativen SPA-Fallback explizit. Pages nutzt seinen automatischen SPA-Fallback. Beide Einrichtungswege stehen in `docs/DEPLOYMENT.md`; eine produktive Veröffentlichung benötigt weiterhin den Cloudflare-Account.
+
+Verifiziert für diese Korrektur: `npm run check` mit 105 bestandenen Tests sowie TypeScript, ESLint und Produktions-Build; `wrangler@4.160.0 deploy --dry-run` erfolgreich, 17 statische Dateien paketiert. Keine Veröffentlichung gegen die Cloudflare-API durchgeführt.
+
 Verbindliche Spezifikation: [Konzeptplan.md](Konzeptplan.md). Analyse am 11.11.2026: Das Ausgangsrepository enthielt ausschließlich den Konzeptplan und eine README. Es gab keine bestehende Anwendung, Infrastruktur oder Tests.
 
 Stand: Alle vier Implementierungsphasen sind im Quellstand umgesetzt; die lokale und emulierte Qualitätssicherung ist abgeschlossen. Ein Haken bedeutet im Quellstand implementiert; Testergebnisse stehen gesondert. Cloud-Funktionen und Push werden erst nach Einrichtung eigener Dienste aktiv. Konfiguration oder Live-Verifikation externer Dienste werden nicht als abgeschlossen dargestellt.

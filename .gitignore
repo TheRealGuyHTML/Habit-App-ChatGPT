@@ -36,3 +36,4 @@ screenshots/
 .idea/
 .vscode/
 work/
+.wrangler/
