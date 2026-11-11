@@ -15,7 +15,12 @@ describe.skipIf(!process.env.FIRESTORE_EMULATOR_HOST)('server progress reconcili
   const value = (item: unknown) => ({ value: item, stamp });
   beforeAll(async () => {
     process.env.GCLOUD_PROJECT = 'demo-bloom-progress';
+    // emulators:exec also injects FIREBASE_CONFIG. initializeApp() prefers that
+    // project over GCLOUD_PROJECT; override both to isolate Admin fixtures from
+    // the Security Rules suite's destructive clearFirestore() operation.
+    process.env.FIREBASE_CONFIG = JSON.stringify({ projectId: 'demo-bloom-progress' });
     reconcile = (await import('./index')).reconcileUser;
+    expect(getApp().options.projectId).toBe('demo-bloom-progress');
   });
   beforeEach(async () => {
     const db = getFirestore();

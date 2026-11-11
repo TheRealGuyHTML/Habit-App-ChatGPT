@@ -2,8 +2,12 @@ name: Validate Bloom
 
 on:
   push:
-    branches: [main, codex/habit-pwa]
+    branches: [main]
   pull_request:
+
+concurrency:
+  group: bloom-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read

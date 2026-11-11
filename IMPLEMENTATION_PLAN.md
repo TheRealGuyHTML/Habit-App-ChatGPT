@@ -108,7 +108,6 @@ Diese Aufgaben benötigen ein eigenes Firebase-/Cloudflare-Projekt oder ein phys
 - Cross-Device-Synchronisierung, Offline-Reconnect und Accountwechsel gegen ein reales Backend testen.
 - Cloudflare Pages mit Produktionsdomain/HTTPS verbinden.
 - Installation, Safe Areas, Standalone, Push-Zustellung und Hintergrund-/Wiederaufnahmeverhalten auf einem physischen iPhone prüfen.
-- Den neuen GitHub-Actions-Workflow nach Push/PR auf GitHub ausführen und das Ergebnis prüfen.
 - Push-Zustellung nach DST-Wechsel, bei ausgeschaltetem Gerät und unter iOS-Energiesparbedingungen beobachten. Web Push garantiert keinen sekundengenauen Lieferzeitpunkt.
 
 ## Verifikationsprotokoll
@@ -128,7 +127,7 @@ Diese Aufgaben benötigen ein eigenes Firebase-/Cloudflare-Projekt oder ein phys
 | Auth-/Firestore-Browserintegration | **6/6 Abläufe bestanden** mit tatsächlichen lokalen Auth-/Firestore-Emulatoren und getrennten Browserkontexten |
 | Allgemeine Playwright-Browserabläufe | **13/13 bestanden**, davon 12 mobile und 1 Desktop; keine unbehandelten App-Fehler |
 | Produktionsabhängigkeiten | `npm audit --omit=dev`: 0 bekannte Schwachstellen im Root-Projekt und in `functions` |
-| GitHub Actions | Workflow für App-/Browser- und Firebase-/Auth-Prüfungen vorhanden; remote noch nicht ausgeführt |
+| GitHub Actions | Automatische App-/Browser- und Firebase-/Auth-Prüfungen; aktueller Remote-Status in den Checks von Pull Request #1. |
 | Externe Firebase-/Cloudflare-/iPhone-Abnahme | Nicht durchgeführt; eigene Infrastruktur/Gerät erforderlich |
 
 Reproduzierbare Prüfungen:
