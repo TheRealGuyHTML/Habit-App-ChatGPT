@@ -1,0 +1,38 @@
+# Dependencies and build output
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+functions/lib/
+coverage/
+
+# Environment and credentials
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.local
+*-service-account*.json
+*serviceAccount*.json
+*.pem
+*.key
+.firebase/
+
+# Local Firebase / emulator data
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+*-debug.log
+functions/.secret.local
+firebase-export-*/
+.emulator-data/
+
+# Test and local development artifacts
+playwright-report/
+test-results/
+screenshots/
+*.tsbuildinfo
+.DS_Store
+.idea/
+.vscode/
+work/

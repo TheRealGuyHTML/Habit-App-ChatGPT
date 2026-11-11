@@ -1,0 +1,108 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function owner(uid) { return request.auth != null && request.auth.uid == uid; }
+    function day(value) { return value is string && value.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'); }
+    function iso(value) { return value is string && value.size() <= 40; }
+    function envelope() {
+      return request.resource.data.keys().hasOnly(['stamp', 'value'])
+        && request.resource.data.stamp is string && request.resource.data.stamp.size() <= 100
+        && (request.method == 'create' || request.resource.data.stamp >= resource.data.stamp);
+    }
+    function schedule(s) {
+      return s is map && (
+        (s.type == 'daily' && s.keys().hasOnly(['type'])) ||
+        (s.type == 'once' && s.keys().hasOnly(['type', 'date']) && day(s.date)) ||
+        (s.type == 'weekdays' && s.keys().hasOnly(['type', 'days']) && s.days is list && s.days.size() > 0 && s.days.size() <= 7 && s.days.hasOnly([0,1,2,3,4,5,6])) ||
+        (s.type == 'interval' && s.keys().hasOnly(['type', 'every', 'anchor']) && s.every in [2,3,4,7,30] && day(s.anchor))
+      );
+    }
+    function config(h) {
+      return h.name is string && h.name.size() > 0 && h.name.size() <= 140
+        && h.emoji is string && h.emoji.size() > 0 && h.emoji.size() <= 64
+        && h.kind in ['check','water','sleep','steps','checklist','produce','reading','screen','language','meditation','journal','running','training']
+        && h.area in ['health','movement','mind','growth','social']
+        && h.negative is bool && h.special is bool
+        && h.difficulty in ['easy','medium','complex']
+        && h.target is number && h.target > 0 && h.target <= 1000000
+        && h.unit in ['ml','hours','steps','portions','minutes','pages','km']
+        && h.subtasks is list && h.subtasks.size() <= 50
+        && h.reminder is string && (h.reminder == '' || h.reminder.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$'))
+        && h.color is string && h.color.matches('^#[a-fA-F0-9]{6}$') && schedule(h.schedule);
+    }
+    function habit(id) {
+      let h = request.resource.data.value;
+      return h == null || (h is map && config(h)
+        && h.keys().hasOnly(['id','createdDay','createdAt','updatedAt','revisions','pauses','deletedFrom','name','emoji','kind','area','negative','difficulty','schedule','special','target','unit','subtasks','reminder','color'])
+        && h.id == id && id.matches('^[a-zA-Z0-9_-]{1,120}$')
+        && day(h.createdDay) && iso(h.createdAt) && iso(h.updatedAt)
+        && h.revisions is list && h.revisions.size() <= 1000
+        && h.pauses is list && h.pauses.size() <= 1000
+        && (!('deletedFrom' in h) || day(h.deletedFrom))
+        && (request.method == 'create' || resource.data.value == null || (h.id == resource.data.value.id && h.createdAt == resource.data.value.createdAt && h.createdDay == resource.data.value.createdDay)));
+    }
+    function entry(id) {
+      let e = request.resource.data.value;
+      return e == null || (e is map && e.keys().hasOnly(['habitId','day','completed','value','checked','note','mood','timerStartedAt','timerElapsed','updatedAt','timeZone'])
+        && e.habitId is string && day(e.day) && id == e.habitId + '_' + e.day
+        && e.completed is bool && e.value is number && e.value >= 0 && e.value <= 10000000
+        && e.checked is list && e.checked.size() <= 50
+        && e.note is string && e.note.size() <= 10000 && e.mood is string && e.mood.size() <= 64
+        && (e.timerStartedAt == null || (e.timerStartedAt is number && e.timerStartedAt >= 0 && e.timerStartedAt <= 9000000000000))
+        && e.timerElapsed is number && e.timerElapsed >= 0 && e.timerElapsed <= 31536000000
+        && e.timeZone is string && e.timeZone.size() <= 100 && iso(e.updatedAt));
+    }
+    function profile() {
+      let p = request.resource.data.value;
+      let s = p.settings;
+      return p is map && p.keys().hasOnly(['settings','onboarded']) && p.onboarded is bool
+        && s.keys().hasOnly(['locale','theme','timeZone','reviewEnabled','reviewTime','notificationsEnabled','name','areas'])
+        && s.locale in ['de','en'] && s.theme in ['system','light','dark']
+        && s.timeZone is string && s.timeZone.size() <= 100
+        && s.reviewEnabled is bool && s.notificationsEnabled is bool
+        && s.reviewTime is string && s.reviewTime.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')
+        && s.name is string && s.name.size() <= 140 && s.areas is list && s.areas.size() <= 5
+        && s.areas.hasOnly(['health','movement','mind','growth','social']);
+    }
+    match /users/{uid}/habits/{id} {
+      allow read: if owner(uid);
+      allow create, update: if owner(uid) && envelope() && habit(id);
+      allow delete: if false;
+    }
+    match /users/{uid}/entries/{id} {
+      allow read: if owner(uid);
+      allow create, update: if owner(uid) && envelope() && entry(id);
+      allow delete: if false;
+    }
+    match /users/{uid}/reviews/{id} {
+      allow read: if owner(uid);
+      allow create, update: if owner(uid) && envelope()
+        && (request.resource.data.value == null || (day(id)
+          && request.resource.data.value.keys().hasOnly(['day','ratings','note','updatedAt'])
+          && request.resource.data.value.day == id
+          && request.resource.data.value.ratings is map && request.resource.data.value.ratings.size() <= 200
+          && request.resource.data.value.note is string && request.resource.data.value.note.size() <= 10000
+          && iso(request.resource.data.value.updatedAt)));
+      allow delete: if false;
+    }
+    match /users/{uid}/profile/{id} {
+      allow read: if owner(uid);
+      allow create, update: if owner(uid) && id == 'main' && envelope() && profile();
+      allow delete: if false;
+    }
+    match /users/{uid}/pushSubscriptions/{id} {
+      allow read, delete: if owner(uid);
+      allow create, update: if owner(uid) && id.matches('^[a-f0-9]{64}$')
+        && request.resource.data.keys().hasOnly(['endpoint','keys','updatedAt'])
+        && request.resource.data.endpoint is string && request.resource.data.endpoint.size() <= 3000
+        && request.resource.data.endpoint.matches('^https://(web[.]push[.]apple[.]com|[a-z0-9-]+[.]push[.]apple[.]com|fcm[.]googleapis[.]com|updates[.]push[.]services[.]mozilla[.]com|[a-z0-9-]+[.]notify[.]windows[.]com)/.*')
+        && request.resource.data.keys.keys().hasOnly(['p256dh','auth'])
+        && request.resource.data.keys.p256dh is string && request.resource.data.keys.p256dh.size() <= 150
+        && request.resource.data.keys.auth is string && request.resource.data.keys.auth.size() <= 50
+        && iso(request.resource.data.updatedAt);
+    }
+    match /users/{uid}/xp/{id} { allow read: if owner(uid); allow write: if false; }
+    match /users/{uid}/negativeAwards/{id} { allow read: if owner(uid); allow write: if false; }
+    match /{document=**} { allow read, write: if false; }
+  }
+}
