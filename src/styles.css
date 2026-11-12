@@ -329,3 +329,19 @@ textarea.input { resize:vertical; line-height:1.7; }
 @media (max-width: 720px) {
   .settings-grid { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Safari's native date/time fields otherwise keep an intrinsic minimum width. */
+input.input[type='time'], input.input[type='date'] {
+  display: block;
+  box-sizing: border-box;
+  width: 100%; min-width: 0; max-width: 100%;
+  inline-size: 100%; min-inline-size: 0; max-inline-size: 100%;
+  appearance: none; -webkit-appearance: none;
+}
+input.input[type='time']::-webkit-date-and-time-value,
+input.input[type='date']::-webkit-date-and-time-value {
+  min-width: 0; text-align: left;
+}
+input.input[type='time']::-webkit-datetime-edit,
+input.input[type='date']::-webkit-datetime-edit { min-width: 0; padding: 0; }
+.time-field { display: grid; grid-template-columns: minmax(0, 1fr); max-width: 100%; }

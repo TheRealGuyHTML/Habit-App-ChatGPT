@@ -1,5 +1,15 @@
 # Implementierungsplan
 
+## Weitere UI-Korrekturen: Zeitfeld, Review, Ziele und Funktionsnamen
+
+- [x] Native Zeit-/Datumsfelder mit Safari-tauglichen Breitenbegrenzungen; Review-Zeitfeld bleibt in seiner Karte.
+- [x] Nur ein Schließen-X für manuell und automatisch geöffnete Reviews.
+- [x] Achievement-Karussell zeigt automatisch das nächste offene Ziel; sind alle erreicht, den zuletzt erreichten Erfolg.
+- [x] Custom-Spezialfunktionen nach Werkzeugen benannt (Liste, Timer, Zähler usw.); vorhandene Timer-Dauern bleiben erhalten.
+
+Verifiziert: TypeScript, ESLint, Produktions-Build und 107 Root-Tests erfolgreich. Alle 22 Browserfälle geprüft; der automatische Review-/Zeitfeld-Fall wurde nach Korrektur des Reload-Testablaufs erneut erfolgreich ausgeführt. Eingabebreite bei 320/390/820 px innerhalb der Karte geprüft; automatische Review-Abfrage einschließlich Reload hat genau ein Schließen-X. Offenes Achievement-Ziel, Custom-Listenbedienung und Erhalt bestehender Timer-Einstellungen geprüft. Physische Safari-Abnahme bleibt extern.
+
+
 ## Weitere Nutzeränderung: kompakte Habit-Insights als Heatmap
 
 - [x] Monatskalender und Tageszahlen entfernt; 7 Wochentagsreihen × 16 fortlaufende Wochen mit kleinen abgerundeten Kästchen.

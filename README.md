@@ -40,7 +40,7 @@ Der Produktions-Build liegt in `dist/`. Für Installation und Push ist HTTPS erf
 - **Home:** Woche oder historischen Tag wählen, Habits abhaken und kompakte Zähler/Timer bedienen. Vollständige Spezial-Tracker öffnen sich per Antippen, ohne die Tageskarte zu vergrößern. Unerledigte Habits stehen oben. Rechts wischen erledigt, links wischen bearbeitet; langes Drücken oder das Habit-Menü bietet weitere Aktionen.
 - **Plus:** Neue Gewohnheit mit Vorlage oder eigenem Namen anlegen. Spezialfunktionen sind standardmäßig deaktiviert und können im Editor zugeschaltet werden. Bei aktiviertem Review-Modus bietet Plus zusätzlich einen Daily Review an.
 - **Statistiken:** Quoten für heute, 7 oder 30 Tage, Wochenfortschritt, aktuelle/beste Streak und kompakte 16-Wochen-Heatmaps pro Habit; gelöschte Habits stehen in einem ausklappbaren Archiv.
-- **Garten:** XP, Level, Erfolge nach 7/21/66 relevanten Erfolgs-Tagen und virtuelle Pflanze. Erfolge sind einzeln durchwischbar; Level und Meilensteine werden kompakt gemeinsam erklärt.
+- **Garten:** XP, Level, Erfolge nach 7/21/66 relevanten Erfolgs-Tagen und virtuelle Pflanze. Erfolge sind einzeln durchwischbar und zeigen beim Öffnen das nächste noch offene Ziel; Level und Meilensteine werden kompakt gemeinsam erklärt.
 - **Einstellungen:** Deutsch/Englisch, System-/Hell-/Dunkel-Darstellung, Review-Uhrzeit, Anmeldung, Benachrichtigungen und Import/Export.
 
 Negative Habits beginnen vorausgewählt. Den Haken entfernen, wenn das unerwünschte Verhalten stattgefunden hat. Die automatische Erfolgsbewertung erhält erst nach Tagesende XP. Wiederholungsfreie und pausierte Tage unterbrechen eine Habit-Streak nicht. Änderungen gelten ab dem Änderungstag; historische Daten bleiben erhalten.
@@ -85,6 +85,6 @@ docs/             Architektur, Bereitstellung und iOS-Push-Unterstützung
 Die lokale Anwendung ist von externer Infrastruktur unabhängig. Firebase- und Cloudflare-Betrieb benötigen ein eigenes Projekt und die dort dokumentierten Einstellungen. Echte Mehrgeräte-Synchronisierung, Produktions-Scheduler und Push auf einem physischen iPhone müssen nach deren Einrichtung separat geprüft werden. Welche Prüfungen in dieser Entwicklungsumgebung tatsächlich ausgeführt wurden, steht im [Verifikationsprotokoll](IMPLEMENTATION_PLAN.md#verifikationsprotokoll).
 
 
-Custom Habits können jede Spezialfunktion nutzen. Daily Reviews vergeben einmalig 5 XP pro gespeichertem Tag – unabhängig von Bewertungen und Erledigungen; erneutes Speichern bringt keine weiteren XP. Alle Review-Skalen zeigen 5 als positive Seite. Der frühere Willpower-Bonus entfällt.
+Custom Habits können jede Spezialfunktion nutzen. Die Auswahl benennt Werkzeuge wie Liste, Timer oder Zähler statt Habit-Vorlagen. Daily Reviews vergeben einmalig 5 XP pro gespeichertem Tag – unabhängig von Bewertungen und Erledigungen; erneutes Speichern bringt keine weiteren XP. Alle Review-Skalen zeigen 5 als positive Seite. Der frühere Willpower-Bonus entfällt.
 
 Bei einem Update auf diese Version mit Firebase zuerst Regeln und Functions aktualisieren: `npx firebase-tools deploy --only firestore:rules,functions`. Danach das Frontend in Cloudflare neu bereitstellen. Ohne Firebase bleiben alle lokalen Funktionen nutzbar.
