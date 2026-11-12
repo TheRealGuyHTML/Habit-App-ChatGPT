@@ -55,7 +55,7 @@ describe.skipIf(!process.env.FIRESTORE_EMULATOR_HOST)('server progress reconcili
     expect((await db.collection(`users/${uid}/negativeAwards`).get()).size).toBe(1);
     expect((await db.doc(`users/${uid}/xp/current`).get()).data()?.xp).toBe(10);
   });
-  it('derives willpower bonus from completed source records and removes it when undone', async () => {
+  it('awards daily review XP once and keeps it when a completion is undone', async () => {
     const db = getFirestore();
     await db.doc(`users/${uid}/habits/habit-server`).set(value(habit(false, today)));
     const entry = createEntry('habit-server', today, 'Europe/Berlin');
@@ -63,8 +63,12 @@ describe.skipIf(!process.env.FIRESTORE_EMULATOR_HOST)('server progress reconcili
     await ref.set(value({ ...entry, completed: true }));
     await db.doc(`users/${uid}/reviews/${today}`).set(value({ day: today, ratings: { 'habit-server': { happiness: 5, resistance: 5, quality: 4 } }, note: '', updatedAt: new Date().toISOString() }));
     await reconcile(uid); await reconcile(uid);
-    expect((await db.doc(`users/${uid}/xp/current`).get()).data()?.xp).toBe(20);
+    expect((await db.doc(`users/${uid}/xp/current`).get()).data()?.xp).toBe(15);
     await ref.set(value(entry)); await reconcile(uid);
+    expect((await db.doc(`users/${uid}/xp/current`).get()).data()?.xp).toBe(5);
+    expect((await db.doc(`users/${uid}/xp/current`).get()).data()?.policyVersion).toBe(2);
+    await db.doc(`users/${uid}/reviews/${today}`).set(value(null));
+    await reconcile(uid);
     expect((await db.doc(`users/${uid}/xp/current`).get()).data()?.xp).toBe(0);
   });
 });

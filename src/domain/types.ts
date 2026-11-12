@@ -5,6 +5,7 @@ export type Difficulty = 'easy' | 'medium' | 'complex';
 export type Area = 'health' | 'movement' | 'mind' | 'growth' | 'social';
 export type Schedule = { type: 'daily' } | { type: 'once'; date: Day } | { type: 'weekdays'; days: number[] } | { type: 'interval'; every: number; anchor: Day };
 export interface HabitConfig {
+  custom?: boolean;
   name: string; emoji: string; kind: HabitKind; area: Area; negative: boolean;
   difficulty: Difficulty; schedule: Schedule; special: boolean; target: number;
   unit: 'ml' | 'hours' | 'steps' | 'portions' | 'minutes' | 'pages' | 'km';

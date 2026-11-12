@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  addDays, calculateGamification, computeHabitStats, computeStats, configForDay,
+  addDays, configFromTemplate, templates, calculateGamification, computeHabitStats, computeStats, configForDay,
   createEntry, createHabit, createInitialState, dayOfWeek, daysBetween, entryKey,
   isComplete, isScheduled, localDay, monthDays, parseImport, togglePause,
   updateHabit, weekDays, weekRates,
@@ -307,7 +307,7 @@ describe('deterministic gamification', () => {
     expect(calculateGamification(state, today).multiplier).toBe(multiplier);
     expect(calculateGamification(state, addDays(today, 3)).multiplier).toBe(multiplier);
   });
-  it('gives willpower XP only for completed habits with high resistance', () => {
+  it('rewards a saved daily review once, independently of resistance or completion', () => {
     const a = habit({}, '2026-01-01', 'a');
     const b = habit({}, '2026-01-01', 'b');
     const state = stateWith(a, [completed(a, '2026-01-01')]);
@@ -315,9 +315,19 @@ describe('deterministic gamification', () => {
     state.reviews['2026-01-01'] = { day: '2026-01-01', note: '', updatedAt: '2026-01-01T20:00:00.000Z', ratings: {
       a: { happiness: 4, resistance: 5, quality: 4 }, b: { happiness: 4, resistance: 5, quality: 4 },
     } };
-    expect(calculateGamification(state, '2026-01-01').xp).toBe(20);
-    state.reviews['2026-01-01'].ratings.a.resistance = 3;
-    expect(calculateGamification(state, '2026-01-01').xp).toBe(10);
+    expect(calculateGamification(state, '2026-01-01').xp).toBe(15);
+    state.reviews['2026-01-01'].ratings.a.resistance = 1;
+    state.reviews['2026-01-01'].updatedAt = '2026-01-01T21:00:00.000Z';
+    expect(calculateGamification(state, '2026-01-01').xp).toBe(15);
+    state.entries = {};
+    const progress = calculateGamification(state, '2026-01-01');
+    expect(progress.xp).toBe(5);
+    expect(progress.ledger).toHaveLength(0);
+    expect(progress.reviewLedger).toHaveLength(1);
+    expect(progress.achievements.find(item => item.id === 'first-step')?.unlocked).toBe(false);
+    expect(calculateGamification(state, '2025-12-31').xp).toBe(0);
+    delete state.reviews['2026-01-01'];
+    expect(calculateGamification(state, '2026-01-01').xp).toBe(0);
   });
   it.each([[0, 1, 0, 100], [1, 1, 0, 100], [2, 2, 100, 300], [6, 3, 300, 600], [12, 4, 600, 1000]])('maps %i independent complex completions to level %i with correct thresholds', (count, level, currentLevelXp, nextLevelXp) => {
     const state = createInitialState();
@@ -465,4 +475,25 @@ describe('validated import boundaries', () => {
     expect(() => parseImport({ ...state, entries: { [key]: { ...state.entries[key], note: 'x'.repeat(100_001) } } })).toThrow();
     expect(() => parseImport({ ...state, reviews: { '2026-01-01': { day: '2026-01-01', note: '', updatedAt: '2026-01-01T20:00:00.000Z', ratings: { walk: { happiness: 9, resistance: 4, quality: 3 } } } } })).toThrow();
   });
+});
+
+it('stores custom tracker choices in revisions and round-trips legacy and custom data', () => {
+  const state = createInitialState('de', 'Europe/Berlin');
+  const custom = createHabit({ ...configFromTemplate(templates[0]), custom: true, special: true }, '2026-01-01', 'custom-water');
+  state.habits[custom.id] = custom;
+  expect(parseImport(JSON.stringify(state)).habits[custom.id].revisions[0].config.custom).toBe(true);
+  const legacy = createHabit(configFromTemplate(templates[0]), '2026-01-01', 'legacy');
+  state.habits[legacy.id] = legacy;
+  expect(parseImport(JSON.stringify(state)).habits.legacy.custom).toBeUndefined();
+});
+
+it('review-only days earn a flat five XP, not a streak multiplier or a habit achievement', () => {
+  const state = createInitialState();
+  for (const day of ['2026-01-01', '2026-01-02', '2026-01-03']) state.reviews[day] = { day, ratings: {}, note: 'A quiet day', updatedAt: '2026-01-03T20:00:00.000Z' };
+  const game = calculateGamification(state, '2026-01-02');
+  expect(game.xp).toBe(10);
+  expect(game.reviewLedger.map(item => item.id)).toEqual(['review:2026-01-01', 'review:2026-01-02']);
+  expect(game.reviewLedger.every(item => item.multiplier === 1)).toBe(true);
+  expect(game.achievements.every(item => !item.unlocked)).toBe(true);
+  expect(calculateGamification(state, '2026-01-02').xp).toBe(10);
 });

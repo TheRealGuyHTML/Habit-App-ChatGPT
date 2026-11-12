@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import type { AppState } from '../../src/domain/types';
+import { createInitialState, createHabit, configFromTemplate, templates } from '../../src/domain';
 
 const errors = new WeakMap<Page, string[]>();
 const fixedNow = new Date('2026-11-11T12:00:00Z');
@@ -144,7 +145,7 @@ test('language, theme and exported data survive reload and an import restores th
   await expect(page.getByLabel('Dein Vorname', { exact: true })).toHaveValue('Alex');
 });
 
-test('statistics show real periods and history; reviews award willpower XP only once', async ({ page }) => {
+test('statistics show real periods and history; reviews award participation XP only once', async ({ page }) => {
   await openDemo(page);
   await navigate(page, 'Statistiken');
   await expect(page.getByRole('heading', { name: 'Kleine Schritte. Große Wirkung.' })).toBeVisible();
@@ -152,9 +153,8 @@ test('statistics show real periods and history; reviews award willpower XP only 
   await expect(page.locator('.completion-donut strong')).toHaveText('0%');
   await page.locator('.completion-card').getByRole('button', { name: '7 Tage', exact: true }).click();
   await expect(page.locator('.completion-donut strong')).not.toHaveText('0%');
-  await page.getByLabel('Gewohnheit auswählen').selectOption('demo-water');
-  await page.getByRole('button', { name: '10. November: Erledigt', exact: true }).click();
-  await expect(page.locator('.calendar-day-detail')).toContainText('Erledigt');
+  await page.locator('[data-habit-id="demo-water"]').getByRole('button', { name: '10. November: Erledigt', exact: true }).click();
+  await expect(page.locator('[data-habit-id="demo-water"] .calendar-day-detail')).toContainText('Erledigt');
   await navigate(page, 'Heute');
   const water = habitCard(page, 'Wasser trinken');
   for (let index = 0; index < 14; index++) await water.getByRole('button', { name: '100 ml hinzufügen', exact: true }).click();
@@ -170,21 +170,23 @@ test('statistics show real periods and history; reviews award willpower XP only 
   await page.getByRole('dialog').getByRole('button', { name: /^Daily Review/ }).click();
   let review = page.locator('.daily-review');
   const waterRating = review.locator('.review-habit').filter({ hasText: 'Wasser trinken' });
-  await waterRating.getByRole('button', { name: 'Wie schwer war der Anfang? 4/5', exact: true }).click();
+  await waterRating.getByRole('button', { name: 'Wie leicht fiel dir der Anfang? 4/5', exact: true }).click();
   await review.getByRole('textbox', { name: 'Was möchtest du mitnehmen?', exact: true }).fill('Trotz Widerstand habe ich angefangen.');
   await review.getByRole('button', { name: 'Review speichern', exact: true }).click();
   await navigate(page, 'Dein Garten');
-  expect(await xpValue(page)).toBe(xpBefore + 10);
+  expect(await xpValue(page)).toBe(xpBefore + 5);
   await navigate(page, 'Hinzufügen');
   await page.getByRole('dialog').getByRole('button', { name: /^Daily Review/ }).click();
   review = page.locator('.daily-review');
   await expect(review.getByRole('textbox', { name: 'Was möchtest du mitnehmen?', exact: true })).toHaveValue('Trotz Widerstand habe ich angefangen.');
+  await expect(waterRating.getByRole('button', { name: 'Wie leicht fiel dir der Anfang? 4/5', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await waterRating.getByRole('button', { name: 'Wie leicht fiel dir der Anfang? 1/5', exact: true }).click();
   await review.getByRole('button', { name: 'Review aktualisieren', exact: true }).click();
   await navigate(page, 'Dein Garten');
-  expect(await xpValue(page)).toBe(xpBefore + 10);
+  expect(await xpValue(page)).toBe(xpBefore + 5);
   await page.reload();
   await navigate(page, 'Dein Garten');
-  expect(await xpValue(page)).toBe(xpBefore + 10);
+  expect(await xpValue(page)).toBe(xpBefore + 5);
 });
 
 test('a negative habit stays preselected and receives its XP after local day end exactly once', async ({ page }) => {
@@ -222,25 +224,32 @@ test('configured checklist and journal controls persist real progress and text',
   await editor.getByRole('switch', { name: /Spezial-Tracker aktivieren/ }).check();
   await editor.getByRole('button', { name: 'Speichern', exact: true }).click();
   let vitamins = habitCard(page, 'Vitamine nehmen');
-  await vitamins.getByRole('button', { name: /Unteraufgaben/ }).click();
+  await vitamins.getByRole('button', { name: 'Tracker öffnen: Vitamine nehmen' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: /Unteraufgaben/ }).click();
   await vitamins.getByRole('checkbox', { name: 'Vitamin D', exact: true }).check();
   await expect(vitamins.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '50');
   await vitamins.getByRole('checkbox', { name: 'Magnesium', exact: true }).check();
+  await page.getByRole('dialog').getByRole('button', { name: 'Fertig', exact: true }).click();
   await expect(vitamins.getByRole('button', { name: 'Vitamine nehmen: Erledigung zurücknehmen' })).toHaveAttribute('aria-pressed', 'true');
   await page.reload();
   vitamins = habitCard(page, 'Vitamine nehmen');
-  await vitamins.getByRole('button', { name: /Unteraufgaben/ }).click();
+  await vitamins.getByRole('button', { name: 'Tracker öffnen: Vitamine nehmen' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: /Unteraufgaben/ }).click();
   await expect(vitamins.getByRole('checkbox', { name: 'Magnesium', exact: true })).toBeChecked();
+  await page.getByRole('dialog').getByRole('button', { name: 'Fertig', exact: true }).click();
   editor = await openEditor(page);
   await editor.locator('.template-list').getByRole('button', { name: /Gedanken festhalten/ }).click();
   await editor.getByRole('switch', { name: /Spezial-Tracker aktivieren/ }).check();
   await editor.getByRole('button', { name: 'Speichern', exact: true }).click();
   let journal = habitCard(page, 'Gedanken festhalten');
+  await journal.getByRole('button', { name: 'Tracker öffnen: Gedanken festhalten' }).click();
   await journal.getByRole('button', { name: 'Gut', exact: true }).click();
   await journal.getByLabel('Dein Highlight oder ein dankbarer Gedanke (optional)').fill('Ein Spaziergang im Herbstlicht.');
+  await page.getByRole('dialog').getByRole('button', { name: 'Fertig', exact: true }).click();
   await expect(journal.getByRole('button', { name: 'Gedanken festhalten: Erledigung zurücknehmen' })).toHaveAttribute('aria-pressed', 'true');
   await page.reload();
   journal = habitCard(page, 'Gedanken festhalten');
+  await journal.getByRole('button', { name: 'Tracker öffnen: Gedanken festhalten' }).click();
   await expect(journal.getByRole('button', { name: 'Gut', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(journal.getByLabel('Dein Highlight oder ein dankbarer Gedanke (optional)')).toHaveValue('Ein Spaziergang im Herbstlicht.');
 });
@@ -394,4 +403,101 @@ test('desktop presents a responsive working dashboard and navigation @desktop', 
   await navigate(page, 'Dein Garten');
   await expect(page.locator('.achievement-card')).toHaveCount(5);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+
+async function importFixture(page: Page, state: AppState) {
+  await navigate(page, 'Einstellungen');
+  await page.locator('input[type="file"]').setInputFiles({ name: 'fixture.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(state)) });
+  await page.getByRole('button', { name: 'Daten ersetzen', exact: true }).click();
+  await navigate(page, 'Heute');
+}
+
+for (const width of [320, 390, 820]) {
+  test(`every special habit stays under twice a plain card at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 1000 });
+    await openDemo(page);
+    const state = createInitialState('de', 'Europe/Berlin');
+    state.onboarded = true;
+    const plain = createHabit({ ...configFromTemplate(templates[0]), kind: 'check', special: false, name: 'Plain reference' }, '2026-11-11', 'plain');
+    state.habits[plain.id] = plain;
+    templates.filter((template, index, all) => template.kind !== 'check' && all.findIndex(item => item.kind === template.kind) === index).forEach(template => {
+      const habit = createHabit({ ...configFromTemplate(template), special: true, subtasks: template.kind === 'checklist' ? ['A', 'B'] : [] }, '2026-11-11', template.id);
+      state.habits[habit.id] = habit;
+    });
+    await importFixture(page, state);
+    const normal = await habitCard(page, 'Plain reference').boundingBox();
+    for (const card of await page.locator('.habit-with-tracker').all()) {
+      const rect = await card.boundingBox();
+      expect(rect!.height).toBeLessThanOrEqual(normal!.height * 2);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath(`compact-${width}.png`), fullPage: true });
+    await navigate(page, 'Statistiken');
+    expect((await page.locator('.weekly-card').boundingBox())!.height).toBeLessThanOrEqual(190);
+  });
+}
+
+test('custom habits choose any tracker and switching from a preset clears obsolete target controls', async ({ page }) => {
+  await openDemo(page);
+  let editor = await openEditor(page);
+  await editor.locator('.template-list').getByRole('button', { name: /Wasser trinken/ }).click();
+  await editor.getByRole('switch', { name: /Spezial-Tracker aktivieren/ }).check();
+  await editor.getByRole('combobox', { name: 'Habit-Typ', exact: true }).selectOption('check');
+  await expect(editor.locator('.config-box')).toHaveCount(0);
+  await expect(editor.getByRole('switch', { name: /Spezial-Tracker aktivieren/ })).not.toBeChecked();
+  await editor.getByLabel('Name', { exact: true }).fill('Mein eigener Lernplan');
+  await editor.getByRole('switch', { name: /Spezial-Tracker aktivieren/ }).check();
+  await editor.getByRole('combobox', { name: 'Spezialfunktion', exact: true }).selectOption('language');
+  await editor.getByLabel('Dein Ziel', { exact: true }).fill('12');
+  await editor.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await expect(habitCard(page, 'Mein eigener Lernplan').getByRole('button', { name: 'Timer starten' })).toBeVisible();
+  await page.reload();
+  await habitCard(page, 'Mein eigener Lernplan').getByRole('button', { name: 'Aktionen: Mein eigener Lernplan' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Bearbeiten', exact: true }).click();
+  editor = page.getByRole('dialog');
+  await expect(editor.getByRole('combobox', { name: 'Habit-Typ', exact: true })).toHaveValue('check');
+  await expect(editor.getByRole('combobox', { name: 'Spezialfunktion', exact: true })).toHaveValue('language');
+  await expect(editor.getByLabel('Dein Ziel', { exact: true })).toHaveValue('12');
+});
+
+test('insights list habits individually and deletion moves history into a collapsed archive', async ({ page }) => {
+  await openDemo(page);
+  await navigate(page, 'Statistiken');
+  await expect(page.locator('.habit-insights-list > .habit-insight-card')).toHaveCount(3);
+  await expect(page.locator('.habit-insights-list select')).toHaveCount(0);
+  await navigate(page, 'Heute');
+  await habitCard(page, 'Wasser trinken').getByRole('button', { name: 'Aktionen: Wasser trinken' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Löschen', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Löschen', exact: true }).click();
+  await navigate(page, 'Statistiken');
+  await expect(page.locator('.habit-insights-list > .habit-insight-card')).toHaveCount(2);
+  await expect(page.locator('.deleted-habits')).not.toHaveAttribute('open');
+  await page.getByText('Gelöschte Habits', { exact: false }).click();
+  await expect(page.locator('.deleted-habits [data-habit-id="demo-water"]')).toBeVisible();
+  await page.reload();
+  await navigate(page, 'Statistiken');
+  await expect(page.locator('.habit-insights-list > [data-habit-id="demo-water"]')).toHaveCount(0);
+  await page.locator('.deleted-habits summary').click();
+  await expect(page.locator('.deleted-habits [data-habit-id="demo-water"] .insight-mini-stats')).toContainText('6');
+});
+
+test('achievements show one card, select the latest unlock and can be swiped or navigated', async ({ page }, testInfo) => {
+  await openDemo(page);
+  await navigate(page, 'Garten');
+  const carousel = page.locator('.achievement-carousel');
+  const first = carousel.locator('.achievement-card').first();
+  expect((await first.boundingBox())!.width).toBeCloseTo((await carousel.boundingBox())!.width, 0);
+  await expect(page.locator('.achievement-controls')).toContainText('1 / 5');
+  await page.getByRole('button', { name: 'Nächster Erfolg' }).click();
+  await expect(page.locator('.achievement-controls')).toContainText('2 / 5');
+  await carousel.evaluate(element => element.scrollTo({ left: element.clientWidth * 3, behavior: 'instant' }));
+  await expect(page.locator('.achievement-controls')).toContainText('4 / 5');
+  expect((await page.locator('.level-guide').boundingBox())!.height).toBeLessThan(350);
+  await expect(page.locator('.milestones-card, .xp-explainer')).toHaveCount(0);
+  await page.screenshot({ path: testInfo.outputPath('compact-garden.png'), fullPage: true });
+  await navigate(page, 'Heute');
+  for (let index = 0; index < 14; index++) await habitCard(page, 'Wasser trinken').getByRole('button', { name: '100 ml hinzufügen' }).click();
+  await navigate(page, 'Garten');
+  await expect(page.locator('.achievement-controls')).toContainText('2 / 5');
 });

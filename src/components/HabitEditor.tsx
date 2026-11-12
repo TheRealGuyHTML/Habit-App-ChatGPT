@@ -6,10 +6,11 @@ import { t } from '../i18n';
 
 export function HabitEditor({ habit, today, locale, onSave, onCancel }: { habit?: Habit; today: Day; locale: Locale; onSave: (config: HabitConfig) => void; onCancel: () => void }) {
   const de = locale === 'de';
-  const [config, setConfig] = useState<HabitConfig>(habit ?? {
-    name: '', emoji: '✨', kind: 'check', area: 'growth', negative: false, difficulty: 'easy',
+  const [config, setConfig] = useState<HabitConfig>(habit ? { ...habit, ...(habit.kind === 'check' ? { special: false, target: 1, unit: 'minutes' as const, subtasks: [], custom: true } : {}) } : {
+    custom: true, name: '', emoji: '✨', kind: 'check', area: 'growth', negative: false, difficulty: 'easy',
     schedule: { type: 'daily' }, special: false, target: 1, unit: 'minutes', subtasks: [], reminder: '', color: '#a78bfa',
   });
+  const [customMode, setCustomMode] = useState(habit?.custom ?? (!habit || habit.kind === 'check'));
   const [subtaskText, setSubtaskText] = useState(config.subtasks.join('\n'));
   const [error, setError] = useState('');
   function patch(value: Partial<HabitConfig>) { setConfig(current => ({ ...current, ...value })); }
@@ -17,18 +18,24 @@ export function HabitEditor({ habit, today, locale, onSave, onCancel }: { habit?
     patch({ schedule: type === 'daily' ? { type } : type === 'once' ? { type, date: today } : type === 'weekdays' ? { type, days: [1, 2, 3, 4, 5] } : { type, every: 2, anchor: today } });
   }
   const kinds: { id: HabitKind; de: string; en: string }[] = [
-    { id: 'check', de: 'Einfaches Habit', en: 'Simple habit' }, { id: 'water', de: 'Wasser', en: 'Water' }, { id: 'sleep', de: 'Schlaf', en: 'Sleep' },
+    { id: 'check', de: 'Custom Habit', en: 'Custom habit' }, { id: 'water', de: 'Wasser', en: 'Water' }, { id: 'sleep', de: 'Schlaf', en: 'Sleep' },
     { id: 'steps', de: 'Schritte', en: 'Steps' }, { id: 'checklist', de: 'Vitamine / Medikamente', en: 'Vitamins / medication' }, { id: 'produce', de: 'Obst & Gemüse', en: 'Fruit & vegetables' },
     { id: 'reading', de: 'Lesen / Lernen', en: 'Reading / learning' }, { id: 'screen', de: 'Bildschirmzeit', en: 'Screen time' }, { id: 'language', de: 'Sprache lernen', en: 'Language learning' },
     { id: 'meditation', de: 'Meditation', en: 'Meditation' }, { id: 'journal', de: 'Journaling', en: 'Journaling' }, { id: 'running', de: 'Laufen / Joggen', en: 'Running / jogging' }, { id: 'training', de: 'Training', en: 'Workout' },
   ];
-  function changeKind(kind: HabitKind) {
+  function changeKind(kind: HabitKind, custom = false) {
+    setCustomMode(kind === 'check' || custom);
+    if (kind === 'check') {
+      patch({ kind: 'check', custom: true, special: false, negative: false, target: 1, unit: 'minutes', subtasks: [] });
+      setSubtaskText('');
+      return;
+    }
     const template = templates.find(item => item.kind === kind);
     if (template) {
       const defaults = configFromTemplate(template, locale, today);
-      patch({ kind, target: defaults.target, unit: defaults.unit, subtasks: defaults.subtasks, negative: defaults.negative });
+      patch({ kind, custom, target: defaults.target, unit: defaults.unit, subtasks: defaults.subtasks, negative: defaults.negative });
       setSubtaskText(defaults.subtasks.join('\n'));
-    } else patch({ kind, special: false, negative: false });
+    } else { patch({ kind: 'check', custom: true, special: false, negative: false, target: 1, unit: 'minutes', subtasks: [] }); setSubtaskText(''); }
   }
   function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -43,12 +50,13 @@ export function HabitEditor({ habit, today, locale, onSave, onCancel }: { habit?
   return <form onSubmit={submit} className="editor-form">
     <span className="eyebrow"><Sparkles size={14} /> {de ? 'EIN KLEINER ANFANG' : 'A SMALL BEGINNING'}</span><h2>{t(locale, habit ? 'editHabit' : 'addHabit')}</h2>
     <p className="muted">{de ? 'Mach es zu deiner Gewohnheit. Ganz in deinem Tempo.' : 'Make it your habit. At your own pace.'}</p>
-    {!habit && <details className="template-picker" open><summary>{de ? 'Mit einer Vorlage starten' : 'Start with a template'}<ChevronDown size={16} /></summary><div className="template-list">{templates.map(template => <button type="button" key={template.id} className={config.kind === template.kind && config.name === template.name[locale] ? 'selected' : ''} onClick={() => { const c = configFromTemplate(template, locale, today); setConfig(c); setSubtaskText(c.subtasks.join('\n')); }}><span>{template.emoji}</span>{template.name[locale]}</button>)}</div></details>}
+    {!habit && <details className="template-picker" open><summary>{de ? 'Mit einer Vorlage starten' : 'Start with a template'}<ChevronDown size={16} /></summary><div className="template-list">{templates.map(template => <button type="button" key={template.id} className={config.kind === template.kind && config.name === template.name[locale] ? 'selected' : ''} onClick={() => { const c = configFromTemplate(template, locale, today); setCustomMode(false); setConfig(c); setSubtaskText(c.subtasks.join('\n')); }}><span>{template.emoji}</span>{template.name[locale]}</button>)}</div></details>}
     <div className="name-row"><label className="field emoji-field">Emoji<input className="input" value={config.emoji} onChange={e => patch({ emoji: e.target.value })} maxLength={16} required aria-label="Emoji" /></label><label className="field grow">{de ? 'Name' : 'Name'}<input className="input" value={config.name} onChange={e => patch({ name: e.target.value })} placeholder={de ? 'Was möchtest du dir Gutes tun?' : 'What would feel good?'} maxLength={80} required autoFocus={Boolean(habit)} /></label></div>
-    <div className="form-grid"><label className="field">{de ? 'Habit-Typ' : 'Tracker type'}<select className="input" value={config.kind} onChange={e => changeKind(e.target.value as HabitKind)}>{kinds.map(kind => <option key={kind.id} value={kind.id}>{de ? kind.de : kind.en}</option>)}</select></label><label className="field">{de ? 'Lebensbereich' : 'Life area'}<select className="input" value={config.area} onChange={e => patch({ area: e.target.value as HabitConfig['area'] })}><option value="health">{de ? 'Gesundheit' : 'Health'}</option><option value="movement">{de ? 'Bewegung' : 'Movement'}</option><option value="mind">{de ? 'Wohlbefinden' : 'Wellbeing'}</option><option value="growth">{de ? 'Wachstum' : 'Growth'}</option><option value="social">{de ? 'Verbindungen' : 'Connection'}</option></select></label></div>
+    <div className="form-grid"><label className="field">{de ? 'Habit-Typ' : 'Tracker type'}<select className="input" value={customMode ? 'check' : config.kind} onChange={e => changeKind(e.target.value as HabitKind)}>{kinds.map(kind => <option key={kind.id} value={kind.id}>{de ? kind.de : kind.en}</option>)}</select></label><label className="field">{de ? 'Lebensbereich' : 'Life area'}<select className="input" value={config.area} onChange={e => patch({ area: e.target.value as HabitConfig['area'] })}><option value="health">{de ? 'Gesundheit' : 'Health'}</option><option value="movement">{de ? 'Bewegung' : 'Movement'}</option><option value="mind">{de ? 'Wohlbefinden' : 'Wellbeing'}</option><option value="growth">{de ? 'Wachstum' : 'Growth'}</option><option value="social">{de ? 'Verbindungen' : 'Connection'}</option></select></label></div>
     <label className="switch-row"><span><b>{t(locale, 'negative')}</b><small>{de ? 'Erfolg bedeutet: Du hast widerstanden.' : 'Success means you resisted the habit.'}</small></span><input type="checkbox" role="switch" checked={config.negative} onChange={e => patch({ negative: e.target.checked, special: e.target.checked && config.kind !== 'screen' ? false : config.special })} disabled={config.special && !['check', 'screen'].includes(config.kind)} /></label>
-    {config.kind !== 'check' && <label className="switch-row"><span><b>{de ? 'Spezial-Tracker aktivieren' : 'Enable special tracker'}</b><small>{de ? 'Zähler, Timer und Eingaben direkt auf der Karte.' : 'Counters, timers and controls on the card.'}</small></span><input type="checkbox" role="switch" checked={config.special} onChange={e => patch({ special: e.target.checked, negative: config.kind === 'screen' ? true : e.target.checked ? false : config.negative })} /></label>}
-    {config.special && <div className="config-box">
+    {<label className="switch-row"><span><b>{de ? 'Spezial-Tracker aktivieren' : 'Enable special tracker'}</b><small>{de ? 'Zähler, Timer und Eingaben direkt auf der Karte.' : 'Counters, timers and controls on the card.'}</small></span><input type="checkbox" role="switch" checked={config.special} onChange={e => { if (customMode && e.target.checked && config.kind === 'check') { changeKind('water', true); patch({ special: true }); } else if (customMode && !e.target.checked) { changeKind('check'); } else patch({ special: e.target.checked, negative: config.kind === 'screen' ? true : e.target.checked ? false : config.negative }); }} /></label>}
+    {customMode && config.special && <label className="field">{de ? 'Spezialfunktion' : 'Special function'}<select className="input" value={config.kind} onChange={e => changeKind(e.target.value as HabitKind, true)}>{kinds.filter(kind => kind.id !== 'check').map(kind => <option key={kind.id} value={kind.id}>{de ? kind.de : kind.en}</option>)}</select></label>}
+    {config.special && config.kind !== 'check' && <div className="config-box">
       {!['journal', 'checklist'].includes(config.kind) && <div className="form-grid"><label className="field">{config.kind === 'screen' ? (de ? 'Tägliches Maximum' : 'Daily maximum') : (de ? 'Dein Ziel' : 'Your target')}<input className="input" type="number" min={config.kind === 'sleep' || config.kind === 'running' ? 0.1 : 1} max={config.kind === 'sleep' ? 24 : 1000000} step="any" value={config.target} onChange={e => patch({ target: Number(e.target.value) })} required /></label><label className="field">{de ? 'Einheit' : 'Unit'}{config.kind === 'reading' ? <select className="input" value={config.unit} onChange={e => patch({ unit: e.target.value as HabitConfig['unit'] })}><option value="pages">{de ? 'Seiten' : 'Pages'}</option><option value="minutes">{de ? 'Minuten' : 'Minutes'}</option></select> : <input className="input" readOnly value={({ ml: 'ml', hours: de ? 'Stunden' : 'Hours', steps: de ? 'Schritte' : 'Steps', portions: de ? 'Portionen' : 'Portions', minutes: de ? 'Minuten' : 'Minutes', pages: de ? 'Seiten' : 'Pages', km: 'km' })[config.unit]} />}</label></div>}
       {config.kind === 'checklist' && <label className="field">{de ? 'Unterpunkte (ein Eintrag pro Zeile)' : 'Checklist (one item per line)'}<textarea className="input" rows={4} maxLength={3000} value={subtaskText} onChange={e => setSubtaskText(e.target.value)} placeholder={'Vitamin D\nMagnesium'} /></label>}
       {config.kind === 'journal' && <p className="muted">{de ? 'Beim Eintragen wählst du eine Stimmung. Ein kurzer Text ist optional.' : 'Choose a mood when checking in. A short note is optional.'}</p>}

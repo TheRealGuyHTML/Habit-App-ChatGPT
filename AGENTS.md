@@ -2,7 +2,7 @@
 
 ## Spezifikation und Struktur
 
-- `Konzeptplan.md` ist die funktionale Spezifikation. `IMPLEMENTATION_PLAN.md` bildet Fortschritt, Annahmen, verifizierte Prüfungen und offene Aufgaben ab. Keine Funktion stillschweigend entfernen oder mit einem leeren Platzhalter ersetzen.
+- `Konzeptplan.md` und die späteren Nutzeränderungen in `IMPLEMENTATION_PLAN.md` bilden die funktionale Spezifikation; neuere Nutzeränderungen haben Vorrang. `IMPLEMENTATION_PLAN.md` bildet Fortschritt, Annahmen, verifizierte Prüfungen und offene Aufgaben ab. Keine Funktion stillschweigend entfernen oder mit einem leeren Platzhalter ersetzen.
 - React + TypeScript + Vite + Tailwind im Frontend, Firebase Auth/Firestore und benötigte Cloud Functions; Hosting-Ziel Cloudflare Pages.
 - UI in `src/components`, Geschäftslogik in `src/domain`, Speicherung/Netzwerk in `src/services`. UI berechnet weder unabhängige XP-Regeln noch alternative Wiederholungslogik.
 - Alle nutzerseitigen Texte in Deutsch und Englisch pflegen. Systemeinstellung für Darstellung, iOS-Safe-Areas, Touch-Größen, Tastaturbedienung und reduzierte Bewegung erhalten.
@@ -13,6 +13,8 @@
 - Die eingestellte IANA-Zeitzone verwenden. Kalenderdaten nicht über `toISOString().slice(0,10)` aus lokaler Uhrzeit ableiten; DST-taugliche Datumshelfer verwenden.
 - Wiederholungen, Pausen, Erstellung, historische Revisionen und Löschdatum bestimmen die relevanten Tage. Einmalige Aufgaben nicht pausieren und nicht in wiederkehrende Habit-Insights aufnehmen.
 - Negative Habits tagsüber vorauswählen; automatische Erfolgs-XP erst für abgeschlossene lokale Tage. Fehlermeldungen und echte Fehlschläge unterscheiden.
+- Seit der Änderung vom 12.11.2026: kein Willpower-Bonus; 5 XP pro gespeichertem Tagesreview unabhängig von Bewertungen, einmal pro lokalem Tag. Review-Skalen zeigen 5 als positiv; das interne Feld `resistance` behält seine bisherige Bedeutung (Anzeige-Leichtigkeit = 6 − Widerstand).
+- Spezialkarten bleiben höchstens doppelt so hoch wie normale Karten; lange Eingaben in einem Dialog erhalten.
 - XP aus eindeutigen Tagesereignissen ableiten; serverseitige Verarbeitung muss wiederholbar und idempotent sein. Kein Client darf serververwaltete XP-/Abschlussbelege schreiben.
 - Lokale Daten und Firebase-Konten strikt trennen. Kein stiller Import des lokalen Demospeichers in ein Konto. Fehler bei Speicherung/Synchronisierung sichtbar behandeln.
 - Importdaten vollständig validieren, bevor bestehende Daten geändert werden. Änderungen an Exportformaten brauchen Schema-/Migrationsstrategie.

@@ -1,5 +1,5 @@
-import { useId, useMemo, useState } from 'react';
-import { ArrowUpRight, BadgeCheck, ChevronDown, Flame, Leaf, LockKeyhole, Sparkles, Sprout, Trophy } from 'lucide-react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { ArrowUpRight, BadgeCheck, ChevronDown, ChevronLeft, ChevronRight, Flame, Leaf, LockKeyhole, Sparkles, Sprout, Trophy } from 'lucide-react';
 import { calculateGamification, difficultyXP } from '../domain';
 import type { AppState, Day, Locale } from '../domain/types';
 import './Insights.css';
@@ -39,6 +39,16 @@ function Plant({ stage, wilted, locale }: { stage: 'seed' | 'sprout' | 'growing'
 export function Garden({ state, today, locale, onAddHabit }: GardenProps) {
   const game = useMemo(() => calculateGamification(state, today), [state, today]);
   const [showLedger, setShowLedger] = useState(false);
+  const carousel = useRef<HTMLDivElement>(null);
+  const defaultAchievement = [...game.achievements].filter(item => item.unlocked).sort((a, b) => (b.unlockedDay ?? '').localeCompare(a.unlockedDay ?? '') || b.threshold - a.threshold)[0]?.id ?? game.achievements.find(item => !item.unlocked)?.id;
+  const [achievementIndex, setAchievementIndex] = useState(0);
+  const autoAchievementIndex = game.achievements.findIndex(item => item.id === defaultAchievement);
+  useEffect(() => {
+    const index = autoAchievementIndex;
+    carousel.current?.scrollTo({ left: Math.max(0, index) * carousel.current.clientWidth, behavior: 'instant' });
+    setAchievementIndex(Math.max(0, index));
+  }, [autoAchievementIndex]);
+  const goAchievement = (index: number) => carousel.current?.scrollTo({ left: index * carousel.current.clientWidth, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
   const de = locale === 'de';
   const stageNames = de ? { seed: 'Ein neuer Anfang', sprout: 'Dein Keimling wächst', growing: 'Du schlägst Wurzeln', bloom: 'Du blühst auf' } : { seed: 'A fresh beginning', sprout: 'Your seedling is growing', growing: 'Putting down roots', bloom: 'Coming into bloom' };
   const achievementText: Record<string, { name: string; description: string; emoji: string }> = {
@@ -50,7 +60,7 @@ export function Garden({ state, today, locale, onAddHabit }: GardenProps) {
   };
   const nextMilestone = [7, 21, 66].find(value => value > game.bestStreak);
   const unlocked = game.achievements.filter(achievement => achievement.unlocked).length;
-  const recent = [...game.ledger].sort((a, b) => b.day.localeCompare(a.day) || b.id.localeCompare(a.id)).slice(0, 20);
+  const recent = [...game.ledger, ...game.reviewLedger].sort((a, b) => b.day.localeCompare(a.day) || b.id.localeCompare(a.id)).slice(0, 20);
   const levelEarned = game.xp - game.currentLevelXp;
   const levelNeeded = game.nextLevelXp - game.currentLevelXp;
 
@@ -67,14 +77,18 @@ export function Garden({ state, today, locale, onAddHabit }: GardenProps) {
 
     {game.bestStreak >= 7 && onAddHabit && <button className="glass-card growth-invitation" type="button" onClick={onAddHabit}><span className="growth-invitation-icon">🌼</span><span><strong>{de ? 'Bereit für etwas Neues?' : 'Ready for something new?'}</strong><span>{de ? 'Deine erste Woche ist geschafft. Ergänze eine Gewohnheit.' : 'Your first week is complete. Add another little habit.'}</span></span><ArrowUpRight size={20}/></button>}
 
-    <section className="glass-card milestones-card"><div className="insight-card-heading"><h2>{de ? 'Deine Meilensteine' : 'Your milestones'}</h2><BadgeCheck size={20} className="muted"/></div><p className="muted insight-subtitle">{de ? 'Erreichte Meilensteine verstärken alle folgenden XP.' : 'Reached milestones boost all future XP.'}</p><div className="milestone-path">{[7, 21, 66].map((threshold, index) => <div key={threshold} className={`milestone-step ${game.bestStreak >= threshold ? 'unlocked' : ''}`}><span className="milestone-node">{game.bestStreak >= threshold ? <BadgeCheck size={22}/> : <span>{threshold}</span>}</span><strong>{threshold} {de ? 'Tage' : 'days'}</strong><small>{[1.1, 1.25, 1.5][index]}× XP</small></div>)}</div>{nextMilestone ? <p className="milestone-next">{de ? `Noch ${nextMilestone - game.bestStreak} erfolgreiche geplante Tage bis zum nächsten Meilenstein.` : `${nextMilestone - game.bestStreak} more successful scheduled days to the next milestone.`}</p> : <p className="milestone-next">{de ? 'Du hast alle Wachstumsphasen erreicht. Deine Gewohnheiten sind ein Teil von dir.' : 'You have reached every growth stage. Your habits are a part of you.'}</p>}</section>
+    <section className="glass-card level-guide"><div className="insight-card-heading"><h2>{de ? 'Level & Meilensteine' : 'Levels & milestones'}</h2><BadgeCheck size={20}/></div>
+      <div className="xp-difficulty">{(['easy', 'medium', 'complex'] as const).map((difficulty, index) => <div key={difficulty}><strong>{difficultyXP[difficulty]} XP</strong><small>{(de ? ['Leicht', 'Mittel', 'Komplex'] : ['Easy', 'Medium', 'Complex'])[index]}</small></div>)}</div>
+      <div className="compact-milestones">{[7, 21, 66].map((threshold, index) => <span key={threshold} className={game.bestStreak >= threshold ? 'unlocked' : ''}>{threshold} {de ? 'Tage' : 'days'} <b>×{[1.1, 1.25, 1.5][index]}</b></span>)}</div>
+      <p className="stats-footnote">{de ? 'XP erhöhen dein Level. Habit-XP × dauerhafter Meilenstein-Multiplikator. Jeder gespeicherte Tagesreview bringt einmalig 5 XP, unabhängig von deinen Bewertungen.' : 'XP raise your level. Habit XP × permanent milestone multiplier. Each saved daily review earns 5 XP once, regardless of your ratings.'} {nextMilestone ? (de ? `Noch ${nextMilestone - game.bestStreak} geplante Erfolge zum nächsten Meilenstein.` : `${nextMilestone - game.bestStreak} scheduled successes to the next milestone.`) : (de ? 'Alle Meilensteine erreicht.' : 'All milestones reached.')}</p>
+      <button type="button" className="xp-history-toggle" aria-expanded={showLedger} onClick={() => setShowLedger(value => !value)}><span>{de ? 'Deine letzten XP' : 'Your recent XP'}</span><ChevronDown size={17} style={{ transform: showLedger ? 'rotate(180deg)' : undefined }}/></button>{showLedger && <div className="xp-ledger">{recent.length ? recent.map(item => <div key={item.id}><span className="ledger-emoji">{state.habits[item.habitId]?.emoji ?? '✦'}</span><div><strong>{item.id.startsWith('review:') ? 'Daily Review' : state.habits[item.habitId]?.name ?? (de ? 'Archiviertes Habit' : 'Archived habit')}</strong><small>{new Intl.DateTimeFormat(de ? 'de-DE' : 'en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${item.day}T12:00:00Z`))} · {item.base} × {item.multiplier}</small></div><b>+{item.xp} XP</b></div>) : <p className="muted">{de ? 'Dein erstes erledigtes Habit legt den Grundstein.' : 'Your first completed habit plants the seed.'}</p>}</div>}</section>
 
-    <section className="achievements-section"><div className="insight-card-heading"><h2>{de ? 'Momente, die bleiben' : 'Little wins that last'}</h2><span className="achievement-count">{unlocked}/{game.achievements.length}</span></div><div className="achievement-grid">{game.achievements.map(achievement => {
+    <section className="achievements-section"><div className="insight-card-heading"><h2>{de ? 'Momente, die bleiben' : 'Little wins that last'}</h2><span className="achievement-count">{unlocked}/{game.achievements.length}</span></div><div className="achievement-controls"><button className="mini-button" aria-label={de ? 'Vorheriger Erfolg' : 'Previous achievement'} disabled={achievementIndex === 0} onClick={() => goAchievement(achievementIndex - 1)}><ChevronLeft size={18}/></button><span aria-live="polite">{achievementIndex + 1} / {game.achievements.length}</span><button className="mini-button" aria-label={de ? 'Nächster Erfolg' : 'Next achievement'} disabled={achievementIndex === game.achievements.length - 1} onClick={() => goAchievement(achievementIndex + 1)}><ChevronRight size={18}/></button></div><div ref={carousel} className="achievement-carousel" aria-label={de ? 'Erfolge zum Durchwischen' : 'Swipe through achievements'} onScroll={event => setAchievementIndex(Math.round(event.currentTarget.scrollLeft / event.currentTarget.clientWidth))}>{game.achievements.map(achievement => {
       const text = achievementText[achievement.id] ?? { name: achievement.id, description: '', emoji: '🏆' };
       return <article key={achievement.id} className={`glass-card achievement-card ${achievement.unlocked ? 'unlocked' : 'locked'}`}><span className="achievement-medallion" aria-hidden="true">{text.emoji}{achievement.unlocked ? <BadgeCheck size={15}/> : <LockKeyhole size={12}/>}</span><h3>{text.name}</h3><p>{text.description}</p><div className="achievement-progress" role="progressbar" aria-label={text.name} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(achievement.progress * 100)}><span style={{ width: `${achievement.progress * 100}%` }}/></div><span className="achievement-status">{achievement.unlocked ? (de ? 'Freigeschaltet' : 'Unlocked') : `${Math.round(achievement.progress * 100)}%`}</span></article>;
     })}</div></section>
 
-    <section className="glass-card xp-explainer"><div className="insight-card-heading"><h2>{de ? 'So wächst deine Erfahrung' : 'How your experience grows'}</h2><Sparkles size={19} className="muted"/></div><div className="xp-difficulty">{(['easy', 'medium', 'complex'] as const).map((difficulty, index) => <div key={difficulty}><span>{['✧', '✦', '✺'][index]}</span><strong>{difficultyXP[difficulty]} XP</strong><small>{(de ? ['Leicht', 'Mittel', 'Komplex'] : ['Easy', 'Medium', 'Complex'])[index]}</small></div>)}</div><p className="stats-footnote">{de ? 'Basis-XP × Meilenstein-Multiplikator. Im Daily Review gibt es bei Widerstand 4 oder 5 zusätzlich 10 Willpower-XP pro erledigtem Habit. Jede Erledigung zählt genau einmal; Korrekturen berechnen die XP neu.' : 'Base XP × milestone multiplier. Daily reviews add 10 willpower XP for each completed habit with resistance 4 or 5. Each completion counts once; corrections recalculate your XP.'}</p><button type="button" className="xp-history-toggle" aria-expanded={showLedger} onClick={() => setShowLedger(value => !value)}><span>{de ? 'Deine letzten XP' : 'Your recent XP'}</span><ChevronDown size={17} style={{ transform: showLedger ? 'rotate(180deg)' : undefined }}/></button>{showLedger && <div className="xp-ledger">{recent.length ? recent.map(item => <div key={item.id}><span className="ledger-emoji">{state.habits[item.habitId]?.emoji ?? '✦'}</span><div><strong>{state.habits[item.habitId]?.name ?? (de ? 'Archiviertes Habit' : 'Archived habit')}</strong><small>{new Intl.DateTimeFormat(de ? 'de-DE' : 'en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${item.day}T12:00:00Z`))} · {item.base} × {item.multiplier}{item.bonus > 0 ? ` + ${item.bonus} Willpower` : ''}</small></div><b>+{item.xp} XP</b></div>) : <p className="muted">{de ? 'Dein erstes erledigtes Habit legt den Grundstein.' : 'Your first completed habit plants the seed.'}</p>}</div>}</section>
+
   </section>;
 }
 

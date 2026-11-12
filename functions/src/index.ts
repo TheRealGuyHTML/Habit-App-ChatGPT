@@ -6,7 +6,7 @@ import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { defineSecret, defineString } from 'firebase-functions/params';
 import { logger } from 'firebase-functions';
 import webpush from 'web-push';
-import { calculateGamification } from '../../src/domain/gamification';
+import { calculateGamification, XP_POLICY_VERSION } from '../../src/domain/gamification';
 import { configForDay, isScheduled } from '../../src/domain/habits';
 import { addDays, localDay } from '../../src/domain/dates';
 import { parseImport } from '../../src/domain/import';
@@ -62,7 +62,7 @@ export async function reconcileUser(uid: string): Promise<void> {
       transaction.set(awardsRef.doc(id), { award, evaluatedDay: today });
     }
     transaction.set(db.doc(`users/${uid}/xp/current`), {
-      xp: game.xp, level: game.level, multiplier: game.multiplier,
+      policyVersion: XP_POLICY_VERSION, xp: game.xp, level: game.level, multiplier: game.multiplier,
       bestStreak: game.bestStreak, computedForDay: today, computedAt: Timestamp.now(),
       negativeAuditCatchupPending: writes > 400, reconciliationPending: false,
     });
@@ -102,7 +102,7 @@ export const finalizeLocalDays = onSchedule({ schedule: 'every 5 minutes', timeZ
     try {
       const today = localDay(new Date(), profile.settings.timeZone);
       const previous = (await db.doc(`users/${uid}/xp/current`).get()).data();
-      if (previous?.computedForDay === today && !previous.negativeAuditCatchupPending && !previous.reconciliationPending) return;
+      if (previous?.policyVersion === XP_POLICY_VERSION && previous.computedForDay === today && !previous.negativeAuditCatchupPending && !previous.reconciliationPending) return;
       await reconcileUser(uid);
     }
     catch (error) { logger.error('Daily reconciliation failed', { uid, error: String(error) }); }

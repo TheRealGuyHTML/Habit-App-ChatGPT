@@ -16,6 +16,7 @@ const schedule = z.discriminatedUnion('type', [
   z.object({ type: z.literal('interval'), every: z.union([z.literal(2), z.literal(3), z.literal(4), z.literal(7), z.literal(30)]), anchor: day }).strict(),
 ]);
 export const habitConfigSchema = z.object({
+  custom: z.boolean().optional(),
   name: z.string().trim().min(1).max(140), emoji: z.string().min(1).max(64),
   kind: z.enum(['check', 'water', 'sleep', 'steps', 'checklist', 'produce', 'reading', 'screen', 'language', 'meditation', 'journal', 'running', 'training']),
   area: z.enum(['health', 'movement', 'mind', 'growth', 'social']), negative: z.boolean(),

@@ -1,5 +1,22 @@
 # Implementierungsplan
 
+## Änderungen nach Nutzerfeedback vom 12.11.2026
+
+Die folgenden Vorgaben ersetzen die entsprechenden Stellen des ursprünglichen Konzepts:
+
+- [x] iPhone/iPad: kompakte Spezialkarten, höchstens doppelte Höhe einer normalen Karte; vollständige Eingaben als Dialog.
+- [x] Wochenchart ungefähr halbiert, ohne Aufstrecken auf die Höhe der Nachbarkarte.
+- [x] Einzelne Habit-Insights untereinander; gelöschte Habits ab Löschdatum nur im eingeklappten Archiv.
+- [x] Ein durchwischbarer Erfolg statt eines großen Achievement-Rasters; zuletzt erreichter Erfolg automatisch ausgewählt.
+- [x] Level-/Meilenstein-/XP-Erklärungen zu einer kompakten Karte zusammengeführt.
+- [x] Custom Habit statt Simple Habit; freie Spezialfunktionswahl mit persistiertem Custom-Kennzeichen und kompatiblem Import.
+- [x] Review-Skalen einheitlich: 5 ist positiv. Vorhandene Widerstandswerte bleiben intern unverändert interpretiert.
+- [x] Willpower-Bonus entfernt. 5 XP je gespeichertem Tagesreview, unabhängig von Bewertungen/Erledigungen; erneutes Speichern vergibt nichts zusätzlich.
+- [x] Wechsel von aktiviertem Preset-Tracker zu Custom setzt alte Ziele/Einheiten/Unterpunkte zurück.
+
+Prüfungen dieses Updates: 107 Root-Tests, 34 Backend-/Firestore-Emulatortests und 19 Playwright-Szenarien bestanden; TypeScript, ESLint, Frontend- und Functions-Build erfolgreich. Kartengrößen für alle Spezialtypen bei 320, 390 und 820 px geprüft; Wochenkarte unter 190 px. Visuelle Kontrolle von Home und Garten, außerdem echte Detail-Tracker-Bedienung nach automatischer Sortierung. Browserprüfung mit Chromium, keine physische Safari-Abnahme. Für Firebase müssen Regeln und Functions neu bereitgestellt werden; produktive iOS-Geräteabnahme bleibt extern.
+
+
 Deployment-Korrektur: Die globale `_redirects`-Regel wurde entfernt, da Workers Static Assets sie mit Fehler 100324 als Endlosschleife ablehnt. `wrangler.jsonc` konfiguriert den Build, `dist` und den nativen SPA-Fallback explizit. Pages nutzt seinen automatischen SPA-Fallback. Beide Einrichtungswege stehen in `docs/DEPLOYMENT.md`; eine produktive Veröffentlichung benötigt weiterhin den Cloudflare-Account.
 
 Verifiziert für diese Korrektur: `npm run check` mit 105 bestandenen Tests sowie TypeScript, ESLint und Produktions-Build; `wrangler@4.160.0 deploy --dry-run` erfolgreich, 17 statische Dateien paketiert. Keine Veröffentlichung gegen die Cloudflare-API durchgeführt.
@@ -73,7 +90,7 @@ Stand: Alle vier Implementierungsphasen sind im Quellstand umgesetzt; die lokale
 - [x] Virtuelle Pflanze mit Wachstumsphasen und sichtbarem Welken bei Vernachlässigung.
 - [x] Optionaler Daily Review mit persönlicher Uhrzeit und automatischem Dialog in der geöffneten App.
 - [x] Glücklichkeit, Widerstand und Qualität je Habit auf Skala 1–5; historische Speicherung und Bearbeitung.
-- [x] Willpower-Bonus für erledigte Habits bei hohem Widerstand.
+- [x] Durch Nutzeränderung vom 12.11.2026 ersetzt: 5 XP pro gespeichertem Tagesreview statt Willpower-Bonus.
 - [x] Historische Review-Auswertungen.
 - [x] Kontextabhängiger Plus-Dialog mit Habit- und Review-Aktion.
 
@@ -81,7 +98,7 @@ Stand: Alle vier Implementierungsphasen sind im Quellstand umgesetzt; die lokale
 
 **Noch offen:** Reale Review-Pushes nach Bereitstellung des Firebase-Schedulers auf einem installierten iPhone prüfen. XP-, Review- und Pflanzenlogik sind lokal implementiert und ohne Cloud verwendbar.
 
-**Prüfungen:** Die bestandenen Domänentests decken XP-Idempotenz, Bonusbedingungen, Rücknahme von Erledigungen und Streak-Multiplikatoren ab. Die Review-/Garten-Browserabläufe einschließlich einmaligem Willpower-Bonus und stabilen XP nach Neuladen wurden zusätzlich über Playwright erfolgreich geprüft.
+**Prüfungen:** Die bestandenen Domänentests decken XP-Idempotenz, Bonusbedingungen, Rücknahme von Erledigungen und Streak-Multiplikatoren ab. Die Review-/Garten-Browserabläufe einschließlich einmaligen Review-XP und stabilen XP nach Neuladen wurden zusätzlich über Playwright erfolgreich geprüft.
 
 ## Phase 4 – Fertigstellung
 
@@ -114,7 +131,7 @@ Diese Aufgaben benötigen ein eigenes Firebase-/Cloudflare-Projekt oder ein phys
 - Installation, Safe Areas, Standalone, Push-Zustellung und Hintergrund-/Wiederaufnahmeverhalten auf einem physischen iPhone prüfen.
 - Push-Zustellung nach DST-Wechsel, bei ausgeschaltetem Gerät und unter iOS-Energiesparbedingungen beobachten. Web Push garantiert keinen sekundengenauen Lieferzeitpunkt.
 
-## Verifikationsprotokoll
+## Verifikationsprotokoll der ursprünglichen Umsetzung (11.11.2026)
 
 | Bereich | Tatsächliches Ergebnis |
 | --- | --- |

@@ -213,3 +213,35 @@
 @media (prefers-reduced-motion: reduce) {
   .insights-page *, .daily-review * { animation: none !important; transition: none !important; }
 }
+
+/* Each chart keeps its natural compact height, including on iPad. */
+.insight-main-grid { align-items: start; }
+.weekly-card { padding: 18px 20px; }
+.weekly-card .insight-subtitle { display: none; }
+.weekly-card .week-chart { flex: none; height: 105px; max-height: 105px; margin: 12px 0 0; align-items: end; }
+.week-chart-column { gap: 6px; }
+.weekly-card .week-chart-track { height: 65px; max-height: 65px; }
+.habit-insights-list, .deleted-habits > div { display: grid; gap: 14px; }
+.habit-insight-card { padding: 18px; }
+.habit-insight-card h3 { margin: 0; font-size: 14px; }
+.habit-insight-card .insight-mini-stats { padding: 15px 0; }
+.habit-insight-card .month-heading { padding-top: 12px; margin-bottom: 10px; }
+.insight-calendar { max-width: 350px; gap: 5px; }
+.calendar-dot { max-width: 34px; }
+.deleted-habits > summary { cursor: pointer; padding: 17px; border-radius: 14px; background: var(--surface); font-size: 13px; }
+.deleted-habits > summary span { color: var(--muted); margin-left: 8px; }
+.deleted-habits > div { margin-top: 14px; }
+.achievement-carousel { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; border-radius: 20px; }
+.achievement-carousel::-webkit-scrollbar { display: none; }
+.achievement-carousel .achievement-card { flex: 0 0 100%; min-width: 0; scroll-snap-align: start; scroll-snap-stop: always; min-height: 144px; padding: 18px; display: grid; grid-template-columns: 58px 1fr; column-gap: 15px; text-align: left; align-content: center; }
+.achievement-carousel .achievement-medallion { grid-row: span 4; width: 52px; height: 52px; margin: 0; align-self: center; }
+.achievement-carousel .achievement-card p { margin: 7px 0 11px; }
+.achievement-controls { display: flex; justify-content: flex-end; align-items: center; gap: 10px; font-size: 10px; color: var(--muted); }
+.achievement-controls .mini-button { min-width: 44px; min-height: 44px; }
+.achievements-section { gap: 8px; }
+.level-guide { padding: 20px; }
+.level-guide .xp-difficulty { margin: 18px 0; }
+.compact-milestones { display: flex; justify-content: space-between; gap: 6px; margin: 0 0 14px; font-size: 10px; }
+.compact-milestones span { padding: 8px; border: 1px solid var(--border); border-radius: 9px; }
+.compact-milestones b { color: var(--accent); margin-left: 4px; }
+.compact-milestones .unlocked { background: #a9cdb718; }
