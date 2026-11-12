@@ -1,5 +1,16 @@
 # Implementierungsplan
 
+## Weitere Nutzeränderung: kompakte Habit-Insights als Heatmap
+
+- [x] Monatskalender und Tageszahlen entfernt; 7 Wochentagsreihen × 16 fortlaufende Wochen mit kleinen abgerundeten Kästchen.
+- [x] Erledigte Tage leuchten in #ec4899; offene, ungeplante und zukünftige Tage unterscheidbar abgedunkelt.
+- [x] Kompakte Statistikzeile und flache Detailzeile statt großer Streak-Blöcke und Kalenderlegende.
+- [x] Frühere Wochen bleiben bis zur Erstellung erreichbar, auch bei gelöschten Habits im Archiv.
+- [x] Vollständige Datums-/Statuslabels und Tastaturnavigation; keine Änderung an Daten oder XP.
+
+Verifiziert: 107 Root-Tests, TypeScript, ESLint und Produktions-Build bestanden. Alle 20 Browserfälle wurden geprüft; nach Ergänzung des Notizdialogs wurden die drei betroffenen Insights-/Heatmap-Flows erneut erfolgreich ausgeführt. Kartenhöhe ≤220 px bei 320/390/820 px; 7×16-Anordnung, keine Tageszahlen, exakte Pink-Farbe, geplante/offene/pausierte/zukünftige Tage, historische Navigation und Tastaturbedienung getestet. Physische Safari-Abnahme bleibt extern.
+
+
 ## Änderungen nach Nutzerfeedback vom 12.11.2026
 
 Die folgenden Vorgaben ersetzen die entsprechenden Stellen des ursprünglichen Konzepts:
