@@ -39,7 +39,7 @@ Der Produktions-Build liegt in `dist/`. Für Installation und Push ist HTTPS erf
 
 - **Home:** Woche oder historischen Tag wählen, Habits abhaken und kompakte Zähler/Timer bedienen. Vollständige Spezial-Tracker öffnen sich per Antippen, ohne die Tageskarte zu vergrößern. Unerledigte Habits stehen oben. Rechts wischen erledigt, links wischen bearbeitet; langes Drücken oder das Habit-Menü bietet weitere Aktionen.
 - **Plus:** Neue Gewohnheit mit Vorlage oder eigenem Namen anlegen. Spezialfunktionen sind standardmäßig deaktiviert und können im Editor zugeschaltet werden. Bei aktiviertem Review-Modus bietet Plus zusätzlich einen Daily Review an.
-- **Statistiken:** Quoten für heute, 7 oder 30 Tage, Wochenfortschritt, aktuelle/beste Streak und monatliche Habit-Insights pro Habit; gelöschte Habits stehen in einem ausklappbaren Archiv.
+- **Statistiken:** Quoten für heute, 7 oder 30 Tage, Wochenfortschritt, aktuelle/beste Streak und kompakte 16-Wochen-Heatmaps pro Habit; gelöschte Habits stehen in einem ausklappbaren Archiv.
 - **Garten:** XP, Level, Erfolge nach 7/21/66 relevanten Erfolgs-Tagen und virtuelle Pflanze. Erfolge sind einzeln durchwischbar; Level und Meilensteine werden kompakt gemeinsam erklärt.
 - **Einstellungen:** Deutsch/Englisch, System-/Hell-/Dunkel-Darstellung, Review-Uhrzeit, Anmeldung, Benachrichtigungen und Import/Export.
 

@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import type { AppState } from '../../src/domain/types';
-import { createInitialState, createHabit, configFromTemplate, templates } from '../../src/domain';
+import { createInitialState, createHabit, createEntry, entryKey, configFromTemplate, templates } from '../../src/domain';
 
 const errors = new WeakMap<Page, string[]>();
 const fixedNow = new Date('2026-11-11T12:00:00Z');
@@ -153,8 +153,8 @@ test('statistics show real periods and history; reviews award participation XP o
   await expect(page.locator('.completion-donut strong')).toHaveText('0%');
   await page.locator('.completion-card').getByRole('button', { name: '7 Tage', exact: true }).click();
   await expect(page.locator('.completion-donut strong')).not.toHaveText('0%');
-  await page.locator('[data-habit-id="demo-water"]').getByRole('button', { name: '10. November: Erledigt', exact: true }).click();
-  await expect(page.locator('[data-habit-id="demo-water"] .calendar-day-detail')).toContainText('Erledigt');
+  await page.locator('[data-habit-id="demo-water"]').locator('[data-day="2026-11-10"]').click();
+  await expect(page.locator('[data-habit-id="demo-water"] .heatmap-detail')).toContainText('Erledigt');
   await navigate(page, 'Heute');
   const water = habitCard(page, 'Wasser trinken');
   for (let index = 0; index < 14; index++) await water.getByRole('button', { name: '100 ml hinzufügen', exact: true }).click();
@@ -484,7 +484,7 @@ test('insights list habits individually and deletion moves history into a collap
   await navigate(page, 'Statistiken');
   await expect(page.locator('.habit-insights-list > [data-habit-id="demo-water"]')).toHaveCount(0);
   await page.locator('.deleted-habits summary').click();
-  await expect(page.locator('.deleted-habits [data-habit-id="demo-water"] .insight-mini-stats')).toContainText('6');
+  await expect(page.locator('.deleted-habits [data-habit-id="demo-water"] .heatmap-summary')).toContainText('6');
 });
 
 test('achievements show one card, select the latest unlock and can be swiped or navigated', async ({ page }, testInfo) => {
@@ -505,4 +505,58 @@ test('achievements show one card, select the latest unlock and can be swiped or 
   for (let index = 0; index < 14; index++) await habitCard(page, 'Wasser trinken').getByRole('button', { name: '100 ml hinzufügen' }).click();
   await navigate(page, 'Garten');
   await expect(page.locator('.achievement-controls')).toContainText('2 / 5');
+});
+
+
+test('habit heatmaps are flat, number-free and navigate history with seven weekday rows', async ({ page }, testInfo) => {
+  await openDemo(page);
+  const state = createInitialState('de', 'Europe/Berlin');
+  state.onboarded = true;
+  const habit = createHabit({ ...configFromTemplate(templates[0]), name: 'Heatmap Verlauf', special: false, schedule: { type: 'weekdays', days: [1, 2, 3, 4, 5] } }, '2025-11-01', 'heatmap');
+  habit.pauses = [{ from: '2026-11-01', to: '2026-11-08' }];
+  state.habits[habit.id] = habit;
+  state.entries[entryKey(habit.id, '2026-11-10')] = { ...createEntry(habit.id, '2026-11-10', state.settings.timeZone), completed: true, mood: '🙂', note: 'Ein langer Spaziergang und ein guter Gedanke.\nDiese Notiz bleibt vollständig lesbar.' };
+  await importFixture(page, state);
+  await navigate(page, 'Statistiken');
+  const card = page.locator('[data-habit-id="heatmap"]');
+  const grid = card.locator('.heatmap-grid');
+  await expect(grid.locator('button')).toHaveCount(112);
+  expect(await grid.locator('button').allTextContents()).toEqual(Array(112).fill(''));
+  await expect(grid.locator('[data-day="2026-11-10"]')).toHaveClass(/done/);
+  await expect(grid.locator('[data-day="2026-11-11"]')).toHaveClass(/missed/);
+  await expect(grid.locator('[data-day="2026-11-05"]')).toHaveClass(/rest/);
+  await expect(grid.locator('[data-day="2026-11-08"]')).toHaveClass(/rest/);
+  await expect(grid.locator('[data-day="2026-11-12"]')).toHaveClass(/future/);
+  expect(await grid.locator('.done').evaluate(e => getComputedStyle(e).backgroundColor)).toBe('rgb(236, 72, 153)');
+  const dots = grid.locator('button');
+  const first = (await dots.nth(0).boundingBox())!;
+  const second = (await dots.nth(1).boundingBox())!;
+  const nextWeek = (await dots.nth(7).boundingBox())!;
+  expect(second.x).toBe(first.x); expect(second.y).toBeGreaterThan(first.y);
+  expect(nextWeek.y).toBe(first.y); expect(nextWeek.x).toBeGreaterThan(first.x);
+  for (const width of [320, 390, 820]) {
+    await page.setViewportSize({ width, height: 1000 });
+    expect((await card.boundingBox())!.height).toBeLessThanOrEqual(220);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await card.screenshot({ path: testInfo.outputPath(`heatmap-${width}.png`) });
+  }
+  await grid.locator('[data-day="2026-11-10"]').click();
+  await expect(card.locator('.heatmap-detail')).toContainText('10. Nov. 2026');
+  await card.getByRole('button', { name: 'Notiz ansehen' }).click();
+  await expect(page.getByRole('dialog')).toContainText('Diese Notiz bleibt vollständig lesbar.');
+  await page.keyboard.press('Escape');
+  await grid.locator('[data-day="2026-11-10"]').focus();
+  await page.keyboard.press('ArrowUp');
+  await expect(grid.locator('[data-day="2026-11-09"]')).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(grid.locator('[data-day="2026-11-09"]')).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
+  await expect(grid.locator('[data-day="2026-11-02"]')).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(grid.locator('[data-day="2026-11-03"]')).toBeFocused();
+  await card.getByRole('button', { name: 'Frühere Wochen' }).click();
+  await expect(grid.locator('[data-day="2026-11-10"]')).toHaveCount(0);
+  await card.getByRole('button', { name: 'Spätere Wochen' }).click();
+  await expect(grid.locator('[data-day="2026-11-10"]')).toHaveClass(/done/);
+  await expect(card.getByRole('button', { name: 'Spätere Wochen' })).toBeDisabled();
 });

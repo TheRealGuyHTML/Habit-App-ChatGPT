@@ -101,3 +101,10 @@ Erfolge verwenden natives horizontales Scroll-Snap mit Tasten und Touch-Swipe. A
 Reviews zeigen bei allen Skalen die positive Seite als 5. „Wie leicht fiel dir der Anfang?“ wird zur Speicherung weiterhin in das vorhandene Widerstandsfeld umgerechnet: `resistance = 6 - angezeigte Leichtigkeit`. So behalten historische Exporte und Bewertungen ihre Bedeutung; Insights rechnen ebenfalls in Leichtigkeit um. Die Fragen belohnen keine schlechte oder gute Bewertung.
 
 Die XP-Regeln haben Version 2. Die Serverzusammenfassung speichert `policyVersion`; der Tagesabschluss berechnet ältere Zusammenfassungen auch am selben Tag neu. Neue Frontend- und Functions-Version verwenden die gemeinsame Domäne. Beim Release müssen die Firestore-Regeln (optionales `custom`-Feld) und Functions zusammen mit dem Frontend aktualisiert werden.
+
+
+## Kompakte Habit-Heatmaps
+
+Die Monatskalender wurden durch ein Raster mit 7 Wochentagsreihen (Montag bis Sonntag) und 16 fortlaufenden Wochenspalten ersetzt. Die 11-px-Kästchen enthalten keine Tageszahlen. Erledigungen erscheinen in #ec4899 mit dezentem Leuchten; geplante offene Tage bleiben transparent abgedunkelt. Ungeplante/pausierte Tage haben einen zurückhaltenden gestrichelten Umriss, zukünftige Tage reduzierte Deckkraft. Die Planung und Erledigungen stammen unverändert aus der Domäne.
+
+Die Karte erhält eine kompakte Statistikzeile und Wochenblock-Navigation bis zur Erstellung des Habits. Ältere Einträge bleiben erreichbar. Antippen zeigt Datum und Status in einer flachen Detailzeile; vorhandene Journaltexte sind über „Notiz ansehen“ vollständig in einem Dialog lesbar, ohne die Karte zu vergrößern. Zugängliche Labels enthalten das vollständige Datum. Ein Tab-Stopp pro Raster sowie Pfeiltasten (vertikal Tage, horizontal Wochen) und Home/End erlauben Tastaturbedienung. Aktive und archivierte Habits verwenden dasselbe Raster.

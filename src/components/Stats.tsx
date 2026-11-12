@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { CalendarDays, CheckCheck, ChevronLeft, ChevronRight, Flame, Sparkles, Trophy } from 'lucide-react';
-import { addDays, computeHabitStats, computeStats, entryKey, isComplete, isScheduled, weekRates } from '../domain';
+import { addDays, computeHabitStats, computeStats, entryKey, dayOfWeek, isComplete, isScheduled, weekRates } from '../domain';
 import type { AppState, Day, Habit, Locale, Rating } from '../domain/types';
 import './Insights.css';
+import { Modal } from './Modal';
 
 interface StatsProps { state: AppState; today: Day; locale: Locale }
 type Range = 1 | 7 | 30;
@@ -12,49 +13,50 @@ function dateLabel(day: Day, locale: Locale, options: Intl.DateTimeFormatOptions
   return new Intl.DateTimeFormat(locale === 'de' ? 'de-DE' : 'en-GB', { ...options, timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`));
 }
 
-function MonthInsight({ habit, state, today, locale }: { habit: Habit; state: AppState; today: Day; locale: Locale }) {
-  const [month, setMonth] = useState(today.slice(0, 7));
+function HabitHeatmap({ habit, state, today, locale }: { habit: Habit; state: AppState; today: Day; locale: Locale }) {
+  const de = locale === 'de';
+  const monday = (day: Day) => addDays(day, -((dayOfWeek(day) + 6) % 7));
+  const latestEnd = addDays(monday(today), 6);
+  const [end, setEnd] = useState(latestEnd);
   const [selectedDay, setSelectedDay] = useState<Day | null>(null);
-  const first = `${month}-01`;
-  const firstWeekday = (new Date(`${first}T12:00:00Z`).getUTCDay() + 6) % 7;
-  const monthLength = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)).getUTCDate();
-  const earliestMonth = habit.createdDay.slice(0, 7);
-  const moveMonth = (by: number) => {
-    const next = new Date(`${first}T12:00:00Z`);
-    next.setUTCMonth(next.getUTCMonth() + by);
-    setMonth(next.toISOString().slice(0, 7));
+  const [noteOpen, setNoteOpen] = useState(false);
+  const closeNote = useCallback(() => setNoteOpen(false), []);
+  const start = addDays(end, -111); // 16 complete weeks, Monday to Sunday.
+  const earliestStart = monday(habit.createdDay);
+  const stats = computeHabitStats(habit, state.entries, today);
+  const weekdays = de ? ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] : ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+  const status = (day: Day) => day > today ? 'future' : !isScheduled(habit, day) ? 'rest' : isComplete(habit, state.entries[entryKey(habit.id, day)], day, today) ? 'done' : 'missed';
+  const statusText = (day: Day) => ({ future: de ? 'Zukünftig' : 'Future', rest: de ? 'Nicht geplant' : 'Not scheduled', done: de ? 'Erledigt' : 'Completed', missed: de ? 'Nicht erledigt' : 'Not completed' })[status(day)];
+  const move = (direction: number) => {
+    setEnd(current => {
+      const candidate = addDays(current, direction * 112);
+      const earliestEnd = addDays(earliestStart, 111);
+      return direction < 0 ? (candidate < earliestEnd ? earliestEnd : candidate) : (candidate > latestEnd ? latestEnd : candidate);
+    });
     setSelectedDay(null);
   };
-  const stats = computeHabitStats(habit, state.entries, today);
-  const weekdays = locale === 'de' ? ['M', 'D', 'M', 'D', 'F', 'S', 'S'] : ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-  const status = (day: Day) => day > today ? 'future' : !isScheduled(habit, day) ? 'rest' : isComplete(habit, state.entries[entryKey(habit.id, day)], day, today) ? 'done' : 'missed';
-  const statusText = (day: Day) => {
-    const kind = status(day);
-    return kind === 'future' ? (locale === 'de' ? 'Liegt in der Zukunft' : 'In the future') : kind === 'rest' ? (locale === 'de' ? 'Nicht geplant' : 'Not scheduled') : kind === 'done' ? (locale === 'de' ? 'Erledigt' : 'Completed') : (locale === 'de' ? 'Nicht erledigt' : 'Not completed');
-  };
-
-  return <div className="month-insight">
-    <div className="insight-mini-stats">
-      <div><strong>{stats.completed}</strong><span>{locale === 'de' ? 'Erledigt' : 'Completed'}</span></div>
-      <div><strong>{stats.currentStreak}<span className="inline-flame"> 🔥</span></strong><span>{locale === 'de' ? 'Aktuelle Serie' : 'Current streak'}</span></div>
-      <div><strong>{stats.bestStreak}</strong><span>{locale === 'de' ? 'Beste Serie' : 'Best streak'}</span></div>
-    </div>
-    <div className="month-heading">
-      <button className="mini-button" type="button" aria-label={locale === 'de' ? 'Vorheriger Monat' : 'Previous month'} onClick={() => moveMonth(-1)} disabled={month <= earliestMonth}><ChevronLeft size={18}/></button>
-      <strong>{dateLabel(first, locale, { month: 'long', year: 'numeric' })}</strong>
-      <button className="mini-button" type="button" aria-label={locale === 'de' ? 'Nächster Monat' : 'Next month'} onClick={() => moveMonth(1)} disabled={month >= today.slice(0, 7)}><ChevronRight size={18}/></button>
-    </div>
-    <div className="insight-calendar" aria-label={locale === 'de' ? 'Habit-Kalender' : 'Habit calendar'}>
-      {weekdays.map((label, i) => <span key={`weekday-${i}`} className="calendar-weekday" aria-hidden="true">{label}</span>)}
-      {Array.from({ length: firstWeekday }, (_, i) => <span key={`blank-${i}`} aria-hidden="true"/>)}
-      {Array.from({ length: monthLength }, (_, i) => {
-        const day = `${month}-${String(i + 1).padStart(2, '0')}`;
-        const kind = status(day);
-        return <button key={day} type="button" className={`calendar-dot ${kind} ${day === today ? 'today' : ''} ${day === selectedDay ? 'selected' : ''}`} aria-label={`${dateLabel(day, locale, { day: 'numeric', month: 'long' })}: ${statusText(day)}`} aria-pressed={day === selectedDay} onClick={() => setSelectedDay(day)}><span>{i + 1}</span></button>;
+  const focused = selectedDay && selectedDay >= start && selectedDay <= end ? selectedDay : today >= start && today <= end ? today : end;
+  const note = selectedDay ? state.entries[entryKey(habit.id, selectedDay)] : undefined;
+  return <div className="habit-heatmap">
+    <div className="heatmap-summary"><span><b>{stats.completed}</b> {de ? 'erledigt' : 'done'}</span><span><b>{stats.currentStreak}</b> {de ? 'Serie' : 'streak'}</span><span><b>{stats.bestStreak}</b> {de ? 'Rekord' : 'best'}</span></div>
+    <div className="heatmap-toolbar"><span>{dateLabel(start, locale, { month: 'short', year: 'numeric' })} – {dateLabel(end, locale, { month: 'short', year: 'numeric' })}</span><div><button className="heatmap-nav" type="button" aria-label={de ? 'Frühere Wochen' : 'Earlier weeks'} disabled={start <= earliestStart} onClick={() => move(-1)}><ChevronLeft size={16}/></button><button className="heatmap-nav" type="button" aria-label={de ? 'Spätere Wochen' : 'Later weeks'} disabled={end >= latestEnd} onClick={() => move(1)}><ChevronRight size={16}/></button></div></div>
+    <div className="heatmap-scroll"><div className="heatmap-weekdays" aria-hidden="true">{weekdays.map((label, index) => <span key={index}>{label}</span>)}</div><div className="heatmap-grid" role="group" aria-label={de ? 'Habit-Verlauf: 16 Wochen, Montag bis Sonntag' : 'Habit history: 16 weeks, Monday to Sunday'}>
+      {Array.from({ length: 112 }, (_, index) => {
+        const day = addDays(start, index);
+        const label = `${dateLabel(day, locale, { dateStyle: 'full' })}: ${statusText(day)}`;
+        return <button key={day} type="button" data-day={day} className={`heatmap-dot ${status(day)} ${day === today ? 'today' : ''}`} aria-label={label} title={label} aria-pressed={selectedDay === day} tabIndex={day === focused ? 0 : -1} onClick={() => setSelectedDay(day)} onKeyDown={event => {
+          const offsets: Record<string, number> = { ArrowUp: -1, ArrowDown: 1, ArrowLeft: -7, ArrowRight: 7, Home: -index, End: 111 - index };
+          const offset = offsets[event.key];
+          if (offset === undefined) return;
+          event.preventDefault();
+          const target = addDays(day, offset);
+          const button = event.currentTarget.parentElement?.querySelector<HTMLButtonElement>(`[data-day="${target}"]`);
+          if (button) { setSelectedDay(target); button.focus(); }
+        }}/>;
       })}
-    </div>
-    <div className="calendar-legend"><span><i className="legend-dot done"/>{locale === 'de' ? 'Erledigt' : 'Completed'}</span><span><i className="legend-dot missed"/>{locale === 'de' ? 'Offen' : 'Incomplete'}</span><span><i className="legend-dot rest"/>{locale === 'de' ? 'Nicht geplant' : 'Not scheduled'}</span></div>
-    {selectedDay && <div className="calendar-day-detail" aria-live="polite"><strong>{dateLabel(selectedDay, locale, { weekday: 'short', day: 'numeric', month: 'long' })}</strong><span>{statusText(selectedDay)}</span>{state.entries[entryKey(habit.id, selectedDay)]?.note && <p>{state.entries[entryKey(habit.id, selectedDay)].mood} {state.entries[entryKey(habit.id, selectedDay)].note}</p>}</div>}
+    </div></div>
+    <div className="heatmap-detail" aria-live="polite" title={note?.note}>{selectedDay ? <><span>{dateLabel(selectedDay, locale, { day: 'numeric', month: 'short', year: 'numeric' })} · {statusText(selectedDay)}{note?.mood ? ` · ${note.mood}` : ''}</span>{note?.note && <button className="heatmap-note-button" onClick={() => setNoteOpen(true)}>{de ? 'Notiz ansehen' : 'View note'}</button>}</> : <span><i/> {de ? 'Erledigt · Tag antippen für Details' : 'Completed · tap a day for details'}</span>}</div>
+    {noteOpen && note?.note && selectedDay && <Modal label={de ? 'Journalnotiz' : 'Journal note'} onClose={closeNote}><h2>{dateLabel(selectedDay, locale, { dateStyle: 'long' })} {note.mood}</h2><p className="heatmap-note-text">{note.note}</p></Modal>}
   </div>;
 }
 
@@ -63,7 +65,7 @@ export function Stats({ state, today, locale }: StatsProps) {
   const habits = Object.values(state.habits).filter(habit => habit.schedule.type !== 'once');
   const active = habits.filter(habit => !habit.deletedFrom || habit.deletedFrom > today);
   const deleted = habits.filter(habit => habit.deletedFrom && habit.deletedFrom <= today);
-  const renderHabit = (habit: Habit) => <article className="glass-card habit-insight-card" key={habit.id} data-habit-id={habit.id}><h3>{habit.emoji} {habit.name}</h3>{habit.deletedFrom && habit.deletedFrom <= today && <p className="muted">{locale === 'de' ? 'Gelöscht ab' : 'Deleted from'} {dateLabel(habit.deletedFrom, locale, { dateStyle: 'medium' })}</p>}<MonthInsight habit={habit} state={state} today={today} locale={locale}/></article>;
+  const renderHabit = (habit: Habit) => <article className="glass-card habit-insight-card" key={habit.id} data-habit-id={habit.id}><h3>{habit.emoji} {habit.name}</h3>{habit.deletedFrom && habit.deletedFrom <= today && <p className="muted">{locale === 'de' ? 'Gelöscht ab' : 'Deleted from'} {dateLabel(habit.deletedFrom, locale, { dateStyle: 'medium' })}</p>}<HabitHeatmap habit={habit} state={state} today={today} locale={locale}/></article>;
   const from = addDays(today, 1 - range);
   const allStats = useMemo(() => computeStats(state, today), [state, today]);
   const rangeStats = useMemo(() => computeStats(state, today, from), [state, today, from]);
