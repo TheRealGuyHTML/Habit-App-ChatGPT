@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { CalendarDays, CheckCheck, ChevronLeft, ChevronRight, Flame, Sparkles, Trophy } from 'lucide-react';
-import { addDays, computeHabitStats, computeStats, configForDay, entryKey, isComplete, isScheduled, weekRates } from '../domain';
+import { addDays, computeHabitStats, computeStats, entryKey, isComplete, isScheduled, weekRates } from '../domain';
 import type { AppState, Day, Habit, Locale, Rating } from '../domain/types';
 import './Insights.css';
 
@@ -61,8 +61,9 @@ function MonthInsight({ habit, state, today, locale }: { habit: Habit; state: Ap
 export function Stats({ state, today, locale }: StatsProps) {
   const [range, setRange] = useState<Range>(7);
   const habits = Object.values(state.habits).filter(habit => habit.schedule.type !== 'once');
-  const [habitId, setHabitId] = useState(habits[0]?.id ?? '');
-  const selectedHabit = habits.find(habit => habit.id === habitId) ?? habits[0];
+  const active = habits.filter(habit => !habit.deletedFrom || habit.deletedFrom > today);
+  const deleted = habits.filter(habit => habit.deletedFrom && habit.deletedFrom <= today);
+  const renderHabit = (habit: Habit) => <article className="glass-card habit-insight-card" key={habit.id} data-habit-id={habit.id}><h3>{habit.emoji} {habit.name}</h3>{habit.deletedFrom && habit.deletedFrom <= today && <p className="muted">{locale === 'de' ? 'Gelöscht ab' : 'Deleted from'} {dateLabel(habit.deletedFrom, locale, { dateStyle: 'medium' })}</p>}<MonthInsight habit={habit} state={state} today={today} locale={locale}/></article>;
   const from = addDays(today, 1 - range);
   const allStats = useMemo(() => computeStats(state, today), [state, today]);
   const rangeStats = useMemo(() => computeStats(state, today, from), [state, today, from]);
@@ -106,15 +107,16 @@ export function Stats({ state, today, locale }: StatsProps) {
       </section>
     </div>
 
-    <section className="glass-card habit-insight-card">
-      <div className="insight-card-heading"><div><p className="eyebrow">HABIT INSIGHTS</p><h2>{locale === 'de' ? 'Beständigkeit wird sichtbar' : 'Consistency, made visible'}</h2></div><span className="insight-decoration">✧</span></div>
-      {habits.length ? <><label className="field insight-habit-select"><span>{locale === 'de' ? 'Gewohnheit auswählen' : 'Choose a habit'}</span><select className="input" value={selectedHabit?.id ?? ''} onChange={event => setHabitId(event.target.value)}>{habits.map(habit => { const config = configForDay(habit, today); return <option key={habit.id} value={habit.id}>{config.emoji} {config.name}</option>; })}</select></label>{selectedHabit && <MonthInsight key={selectedHabit.id} habit={selectedHabit} state={state} today={today} locale={locale}/>}</> : <p className="insight-empty muted">{locale === 'de' ? 'Lege eine wiederkehrende Gewohnheit an. Hier wächst dann dein persönlicher Kalender.' : 'Add a recurring habit to start growing your personal calendar.'}</p>}
+    <section className="habit-insights-list" aria-label="Habit Insights">
+      <div className="insight-card-heading"><h2>Habit Insights</h2><span className="insight-decoration">✧</span></div>
+      {active.length ? active.map(renderHabit) : <p className="muted">{locale === 'de' ? 'Keine aktiven wiederkehrenden Habits.' : 'No active recurring habits.'}</p>}
+      {deleted.length > 0 && <details className="deleted-habits"><summary>{locale === 'de' ? 'Gelöschte Habits' : 'Deleted habits'} <span>{deleted.length}</span></summary><div>{deleted.map(renderHabit)}</div></details>}
     </section>
 
     {state.settings.reviewEnabled && <section className="glass-card review-insights-card">
       <div className="insight-card-heading"><h2>{locale === 'de' ? 'Wie es sich anfühlt' : 'How it feels'}</h2><span>💭</span></div>
       <p className="muted insight-subtitle">{locale === 'de' ? `Deine Reviews der letzten ${range} Tage.` : `Your reviews from the last ${range} days.`}</p>
-      {ratings.length ? <><div className="review-averages">{(['happiness', 'resistance', 'quality'] as const).map((key, index) => <div key={key}><span>{['😊', '💪', '✨'][index]}</span><strong>{average(ratings.map(rating => rating[key])).toFixed(1)}<small>/5</small></strong><span>{(locale === 'de' ? ['Glücklichkeit', 'Widerstand', 'Qualität'] : ['Happiness', 'Resistance', 'Quality'])[index]}</span></div>)}</div><div className="review-history">{reviews.slice(0, 7).map(review => <details key={review.day}><summary><span>{dateLabel(review.day, locale, { weekday: 'short', day: 'numeric', month: 'short' })}</span><span className="muted">{Object.keys(review.ratings).length} Habits</span></summary><div>{Object.entries(review.ratings).map(([id, rating]) => <p key={id}><strong>{state.habits[id]?.name ?? (locale === 'de' ? 'Archiviertes Habit' : 'Archived habit')}</strong><span>😊 {rating.happiness} · 💪 {rating.resistance} · ✨ {rating.quality}</span></p>)}{review.note && <blockquote>{review.note}</blockquote>}</div></details>)}</div></> : <p className="insight-empty muted">{locale === 'de' ? 'Dein erstes Daily Review macht mehr sichtbar als eine Erfolgsquote. Speichere es über den Plus-Button.' : 'Your first daily review reveals more than a completion rate. Save one using the plus button.'}</p>}
+      {ratings.length ? <><div className="review-averages">{(['happiness', 'resistance', 'quality'] as const).map((key, index) => <div key={key}><span>{['😊', '💪', '✨'][index]}</span><strong>{average(ratings.map(rating => key === 'resistance' ? 6 - rating[key] : rating[key])).toFixed(1)}<small>/5</small></strong><span>{(locale === 'de' ? ['Glücklichkeit', 'Leichtigkeit', 'Qualität'] : ['Happiness', 'Ease of starting', 'Quality'])[index]}</span></div>)}</div><div className="review-history">{reviews.slice(0, 7).map(review => <details key={review.day}><summary><span>{dateLabel(review.day, locale, { weekday: 'short', day: 'numeric', month: 'short' })}</span><span className="muted">{Object.keys(review.ratings).length} Habits</span></summary><div>{Object.entries(review.ratings).map(([id, rating]) => <p key={id}><strong>{state.habits[id]?.name ?? (locale === 'de' ? 'Archiviertes Habit' : 'Archived habit')}</strong><span>😊 {rating.happiness} · 💪 {6 - rating.resistance} · ✨ {rating.quality}</span></p>)}{review.note && <blockquote>{review.note}</blockquote>}</div></details>)}</div></> : <p className="insight-empty muted">{locale === 'de' ? 'Dein erstes Daily Review macht mehr sichtbar als eine Erfolgsquote. Speichere es über den Plus-Button.' : 'Your first daily review reveals more than a completion rate. Save one using the plus button.'}</p>}
     </section>}
   </section>;
 }

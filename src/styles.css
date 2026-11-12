@@ -304,3 +304,28 @@ textarea.input { resize:vertical; line-height:1.7; }
 @media (max-width: 720px) {
   input.input, select.input, textarea.input, .settings-section .input { font-size: 16px; }
 }
+
+/* Compact daily cards keep the overview at most twice a plain card's height.
+   Long forms and checklists remain fully accessible in a focused sheet. */
+.habit-card { min-height: 88px; padding: 14px 16px; }
+.habit-card-top { min-height: 44px; }
+.habit-copy h3 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.habit-meta { flex-wrap: nowrap; overflow: hidden; white-space: nowrap; }
+.habit-card .compact-tracker { display: flex; align-items: center; gap: 6px; margin-top: 8px; padding-top: 6px; min-height: 49px; }
+.habit-card .compact-tracker .mini-button { min-width: 40px; min-height: 40px; }
+.habit-card .compact-tracker .tracker-count { min-width: 0; gap: 3px; white-space: nowrap; font-size: 10px; }
+.habit-card .compact-tracker .tracker-count strong { font-size: 17px; }
+.compact-clock { font-size: 18px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.compact-tracker-open { display: flex; align-items: center; justify-content: flex-end; gap: 3px; min-width: 0; flex: 1; min-height: 40px; color: var(--muted); text-align: right; font-size: 10px; }
+.compact-tracker-open span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.negative-note { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 5px; }
+
+/* Narrow iPhones must not expand the layout viewport through intrinsic form widths. */
+.settings-section { min-width: 0; }
+.settings-section button { max-width: 100%; overflow-wrap: anywhere; }
+.data-buttons { flex-wrap: wrap; }
+.data-buttons > button { flex: 1 1 120px; }
+.form-actions { flex-wrap: wrap; }
+@media (max-width: 720px) {
+  .settings-grid { grid-template-columns: minmax(0, 1fr); }
+}

@@ -41,7 +41,7 @@ Der Konzeptplan nennt drei Schwierigkeiten und Meilensteine, jedoch keine Zahlen
 | Leicht | 10 Basis-XP |
 | Mittel | 25 Basis-XP |
 | Komplex | 50 Basis-XP |
-| Willpower | +10 XP je tatsächlich erledigtem Habit mit Review-Widerstand ≥4 |
+| Daily Review | +5 XP je gespeichertem lokalen Tagesreview, unabhängig von Bewertungen und Habit-Erledigungen |
 | 7 relevante Erfolgs-Tage in Folge | Multiplikator 1,10 |
 | 21 relevante Erfolgs-Tage in Folge | Multiplikator 1,25 |
 | 66 relevante Erfolgs-Tage in Folge | Multiplikator 1,50 |
@@ -49,7 +49,7 @@ Der Konzeptplan nennt drei Schwierigkeiten und Meilensteine, jedoch keine Zahlen
 
 Die höchste erreichte relevante Habit-Streak schaltet den Multiplikator frei. Nachfolgend ausgelassene Tage entfernen einen bereits erreichten Meilenstein nicht. Der Multiplikator wird chronologisch ab Erreichen angewendet; vergangene Tagesereignisse werden nicht nachträglich aufgewertet. Eine historische Datenkorrektur darf eine zuvor fälschlich erfasste Erfolgsserie korrigieren.
 
-XP sind eine deterministische Ableitung eindeutiger Tagesereignisse. Mehrfaches Synchronisieren, Neuladen oder Verarbeiten erhöht den Betrag nicht. Eine zurückgenommene Erledigung entfernt den zugehörigen Anspruch; ein Review allein erzeugt keine Basis-XP. Bei negativen Habits ist auch der Willpower-Bonus erst nach abgeschlossenem Tag wirksam.
+XP sind eine deterministische Ableitung eindeutiger Tagesereignisse. Mehrfaches Synchronisieren, Neuladen oder Verarbeiten erhöht den Betrag nicht. Eine zurückgenommene Erledigung entfernt deren Habit-XP; die 5 Review-XP bleiben erhalten, solange der Tagesreview existiert. Ein Review wird über `review:YYYY-MM-DD` genau einmal berücksichtigt, auch nach Änderungen oder Synchronisierung. Zukünftige Reviews erhalten noch keine XP. Der Review-Betrag erhält keinen Streak-Multiplikator und zählt nicht als Habit-Erledigung für Erfolge. Der frühere Willpower-Bonus entfällt auch bei der Neuberechnung bestehender Historie.
 
 Die Pflanze visualisiert Level und Konsistenz. Sie ist Teil der Oberfläche; ihre Wachstums- und Welke-Zustände werden aus Fortschritt abgeleitet und nicht als unabhängiger manipulierbarer Zähler geführt.
 
@@ -88,3 +88,16 @@ Firestore-Regeln und serverseitige Idempotenz wurden zusätzlich gegen einen ech
 ## Abhängigkeiten
 
 Die Root-Konfiguration setzt `@grpc/grpc-js` per npm-Override auf `^1.14.7`. Firebase zieht gRPC transitiv ein; der Override hält den behobenen Stand auch bei einer älteren Unterabhängigkeitsauflösung einheitlich fest. Beide npm-Lockfiles werden versioniert, damit lokale Installation, CI und Functions-Build denselben geprüften Abhängigkeitsstand verwenden. `npm audit --omit=dev` prüft die jeweiligen Produktionsabhängigkeiten; es ersetzt keine Geschäftslogik- oder Zugriffsschutztests.
+
+
+## Mobile Überarbeitung vom 12.11.2026
+
+Die Startansicht hält Spezialkarten unter dem Zweifachen der normalen Mindesthöhe (88 px). Wasser/Portionen und Timer haben direkte Kurzbedienung; vollständige Eingaben, Checklisten und Journaling öffnen sich in einem Dialog. Die Karte wächst dadurch nicht mit Checklisten- oder Textlänge. Die Wochenstatistik nutzt einen ungefähr halbierten Platzbedarf. Habit-Insights stehen einzeln untereinander; ab `deletedFrom <= today` erscheinen sie ausschließlich im geschlossenen Archiv „Gelöschte Habits“. Historische Einträge bleiben gespeichert.
+
+Erfolge verwenden natives horizontales Scroll-Snap mit Tasten und Touch-Swipe. Automatisch ausgewählt wird der zeitlich zuletzt erreichte Erfolg; bei gleichem Datum der höhere Meilenstein. Ohne Erfolge wird das erste offene Ziel angezeigt. Manuelles Browsen bleibt erhalten, bis sich diese automatische Auswahl ändert. Level-, Basis-XP- und Multiplikator-Erklärung sind eine gemeinsame Karte.
+
+`HabitConfig.custom?: boolean` kennzeichnet einen Custom Habit unabhängig von der verwendeten Tracker-Engine (`kind`). Alte Daten ohne dieses optionale Feld bleiben importierbar. Custom Habits können jede vorhandene Spezialfunktion wählen. Der Wechsel zum Custom Habit setzt Spezialmodus, Ziel, Einheit und Unterpunkte zurück; danach lässt sich eine neue Spezialfunktion bewusst auswählen. Historische Revisionen bewahren die bisherigen Tracker-Einstellungen.
+
+Reviews zeigen bei allen Skalen die positive Seite als 5. „Wie leicht fiel dir der Anfang?“ wird zur Speicherung weiterhin in das vorhandene Widerstandsfeld umgerechnet: `resistance = 6 - angezeigte Leichtigkeit`. So behalten historische Exporte und Bewertungen ihre Bedeutung; Insights rechnen ebenfalls in Leichtigkeit um. Die Fragen belohnen keine schlechte oder gute Bewertung.
+
+Die XP-Regeln haben Version 2. Die Serverzusammenfassung speichert `policyVersion`; der Tagesabschluss berechnet ältere Zusammenfassungen auch am selben Tag neu. Neue Frontend- und Functions-Version verwenden die gemeinsame Domäne. Beim Release müssen die Firestore-Regeln (optionales `custom`-Feld) und Functions zusammen mit dem Frontend aktualisiert werden.

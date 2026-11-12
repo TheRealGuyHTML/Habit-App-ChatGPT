@@ -6,6 +6,7 @@ export const entryKey = (habitId: string, day: Day): string => `${habitId}_${day
 /** TypeScript structural values may carry Habit metadata; snapshots only store config. */
 export function snapshotConfig(config: HabitConfig): HabitConfig {
   return {
+    ...(config.custom !== undefined ? { custom: config.custom } : {}),
     name: config.name, emoji: config.emoji, kind: config.kind, area: config.area, negative: config.negative,
     difficulty: config.difficulty, schedule: structuredClone(config.schedule), special: config.special,
     target: config.target, unit: config.unit, subtasks: [...config.subtasks], reminder: config.reminder, color: config.color,

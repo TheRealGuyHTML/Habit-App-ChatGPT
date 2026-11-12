@@ -24,6 +24,13 @@ describe.skipIf(!enabled)('Firestore account isolation and validation', () => {
     await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), 'users/alice/habits/habit-test')));
     await assertFails(setDoc(doc(env.authenticatedContext('bob').firestore(), 'users/alice/habits/other'), envelope(fixture())));
   });
+  it('accepts custom tracker metadata but rejects nonboolean values', async () => {
+    const alice = env.authenticatedContext('alice').firestore();
+    const ref = doc(alice, 'users/alice/habits/habit-test');
+    const habit = createHabit({ ...configFromTemplate(templates[0]), custom: true, special: true }, '2026-11-11', 'habit-test');
+    await assertSucceeds(setDoc(ref, envelope(habit)));
+    await assertFails(setDoc(ref, { stamp: stamp + 'z', value: { ...habit, custom: 'yes' } }));
+  });
   it('rejects client-written XP and administrative receipts', async () => {
     const alice = env.authenticatedContext('alice').firestore();
     for (const path of ['xp/current', 'negativeAwards/habit-test_2026-11-11', 'notificationReceipts/forged']) await assertFails(setDoc(doc(alice, `users/alice/${path}`), { xp: 999999 }));

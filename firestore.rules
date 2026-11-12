@@ -18,7 +18,7 @@ service cloud.firestore {
       );
     }
     function config(h) {
-      return h.name is string && h.name.size() > 0 && h.name.size() <= 140
+      return (!('custom' in h) || h.custom is bool) && h.name is string && h.name.size() > 0 && h.name.size() <= 140
         && h.emoji is string && h.emoji.size() > 0 && h.emoji.size() <= 64
         && h.kind in ['check','water','sleep','steps','checklist','produce','reading','screen','language','meditation','journal','running','training']
         && h.area in ['health','movement','mind','growth','social']
@@ -33,7 +33,7 @@ service cloud.firestore {
     function habit(id) {
       let h = request.resource.data.value;
       return h == null || (h is map && config(h)
-        && h.keys().hasOnly(['id','createdDay','createdAt','updatedAt','revisions','pauses','deletedFrom','name','emoji','kind','area','negative','difficulty','schedule','special','target','unit','subtasks','reminder','color'])
+        && h.keys().hasOnly(['custom','id','createdDay','createdAt','updatedAt','revisions','pauses','deletedFrom','name','emoji','kind','area','negative','difficulty','schedule','special','target','unit','subtasks','reminder','color'])
         && h.id == id && id.matches('^[a-zA-Z0-9_-]{1,120}$')
         && day(h.createdDay) && iso(h.createdAt) && iso(h.updatedAt)
         && h.revisions is list && h.revisions.size() <= 1000

@@ -205,6 +205,17 @@ Firebase Functions werden weiterhin separat bereitgestellt. Ein erfolgreicher Dr
 
 `.github/workflows/ci.yml` führt in zwei getrennten Jobs Root-TypeScript/Lint/Tests/Build plus Playwright sowie Functions-Build und die Firestore-/Auth-Emulatortests aus. Der Workflow läuft bei Pull Requests und Pushes nach `main` oder `codex/habit-pwa`, benötigt keine Produktions-Secrets und verwendet Demo-Projekte. Die lokale Prüfung dieser Befehle ist bestanden; ein tatsächlicher Lauf auf GitHub muss nach dem Push geprüft werden.
 
+## Versionsupdate: Custom Habits und Review-XP
+
+Für die Überarbeitung vom 12.11.2026 benötigen Custom Habits die aktualisierten Firestore-Regeln; die neue Review-Vergütung benötigt die aktualisierten Cloud Functions. Zuerst Backend aktualisieren, anschließend das Frontend auf Cloudflare:
+
+```bash
+npm --prefix functions ci
+npx firebase-tools deploy --only firestore:rules,functions
+```
+
+Der Functions-Predeploy baut den aktuellen gemeinsamen Domänen-Code. Die neue Policy-Version erzwingt bei der nächsten geplanten Verarbeitung eine Neuberechnung alter XP-Zusammenfassungen. Bewertungen und Einträge werden nicht gelöscht. Historische Willpower-Boni entfallen; vorhandene Tagesreviews bringen stattdessen jeweils 5 XP. Deshalb kann sich der Gesamt-XP-/Levelstand ändern. In der lokalen App gilt dieselbe Regel sofort beim Laden. Keine Schlüssel oder Service-Accounts in Git speichern.
+
 ## 7. Abnahme nach Bereitstellung
 
 - Mit zwei Konten prüfen, dass keine fremden Daten lesbar/schreibbar sind.
