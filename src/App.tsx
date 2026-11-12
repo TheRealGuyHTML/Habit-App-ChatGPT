@@ -154,7 +154,7 @@ export default function App() {
     const config = configForDay(habit, day);
     const entry = state.entries[entryKey(habit.id, day)];
     const complete = isComplete(habit, entry, day, today);
-    if (config.special && !config.negative) {
+    if (config.special && config.kind !== 'check' && !config.negative) {
       if (!complete) { if (config.kind === 'journal') setPanel({ type: 'journal', habit }); else setToast(t(locale, 'completeGoal')); return; }
       changeEntry(habit, { completed: false, value: 0, checked: [], mood: '', timerStartedAt: null, timerElapsed: 0 });
     } else changeEntry(habit, { completed: !complete });

@@ -421,11 +421,16 @@ for (const width of [320, 390, 820]) {
     state.onboarded = true;
     const plain = createHabit({ ...configFromTemplate(templates[0]), kind: 'check', special: false, name: 'Plain reference' }, '2026-11-11', 'plain');
     state.habits[plain.id] = plain;
+    const legacy = createHabit({ ...configFromTemplate(templates[0]), name: 'Legacy Custom', kind: 'check', special: true, unit: 'portions', target: 1 }, '2026-11-11', 'legacy-check');
+    state.habits[legacy.id] = legacy;
     templates.filter((template, index, all) => template.kind !== 'check' && all.findIndex(item => item.kind === template.kind) === index).forEach(template => {
       const habit = createHabit({ ...configFromTemplate(template), special: true, subtasks: template.kind === 'checklist' ? ['A', 'B'] : [] }, '2026-11-11', template.id);
       state.habits[habit.id] = habit;
     });
     await importFixture(page, state);
+    await expect(habitCard(page, 'Legacy Custom').locator('.tracker')).toHaveCount(0);
+    await habitCard(page, 'Legacy Custom').getByRole('button', { name: 'Legacy Custom: Als erledigt markieren' }).click();
+    await expect(habitCard(page, 'Legacy Custom').getByRole('button', { name: 'Legacy Custom: Erledigung zurücknehmen' })).toHaveAttribute('aria-pressed', 'true');
     const normal = await habitCard(page, 'Plain reference').boundingBox();
     for (const card of await page.locator('.habit-with-tracker').all()) {
       const rect = await card.boundingBox();
