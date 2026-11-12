@@ -40,7 +40,7 @@ export function Garden({ state, today, locale, onAddHabit }: GardenProps) {
   const game = useMemo(() => calculateGamification(state, today), [state, today]);
   const [showLedger, setShowLedger] = useState(false);
   const carousel = useRef<HTMLDivElement>(null);
-  const defaultAchievement = [...game.achievements].filter(item => item.unlocked).sort((a, b) => (b.unlockedDay ?? '').localeCompare(a.unlockedDay ?? '') || b.threshold - a.threshold)[0]?.id ?? game.achievements.find(item => !item.unlocked)?.id;
+  const defaultAchievement = game.achievements.find(item => !item.unlocked)?.id ?? [...game.achievements].filter(item => item.unlocked).sort((a, b) => (b.unlockedDay ?? '').localeCompare(a.unlockedDay ?? '') || b.threshold - a.threshold)[0]?.id;
   const [achievementIndex, setAchievementIndex] = useState(0);
   const autoAchievementIndex = game.achievements.findIndex(item => item.id === defaultAchievement);
   useEffect(() => {

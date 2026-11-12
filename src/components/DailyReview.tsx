@@ -1,14 +1,14 @@
 import { useState } from 'react';
-import { Check, Sparkles, X } from 'lucide-react';
+import { Check, Sparkles } from 'lucide-react';
 import { configForDay, entryKey, isComplete, isScheduled, localDay } from '../domain';
 import type { AppState, Day, Locale, Rating, Review } from '../domain/types';
 import './Insights.css';
 
-interface DailyReviewProps { state: AppState; day: Day; locale: Locale; onSave: (review: Review) => void; onClose: () => void }
+interface DailyReviewProps { state: AppState; day: Day; locale: Locale; onSave: (review: Review) => void }
 const moodEmojis = ['😞', '😕', '😐', '🙂', '🤩'];
 const defaultRating = (): Rating => ({ happiness: 3, resistance: 3, quality: 3 });
 
-export function DailyReview({ state, day, locale, onSave, onClose }: DailyReviewProps) {
+export function DailyReview({ state, day, locale, onSave }: DailyReviewProps) {
   const habits = Object.values(state.habits).filter(habit => isScheduled(habit, day));
   const previous = state.reviews[day];
   const [ratings, setRatings] = useState<Record<string, Rating>>(() => Object.fromEntries(habits.map(habit => [habit.id, previous?.ratings[habit.id] ?? defaultRating()])));
@@ -16,14 +16,14 @@ export function DailyReview({ state, day, locale, onSave, onClose }: DailyReview
   const today = localDay(new Date(), state.settings.timeZone);
   const updateRating = (id: string, metric: keyof Rating, value: number) => setRatings(previousRatings => ({ ...previousRatings, [id]: { ...(previousRatings[id] ?? defaultRating()), [metric]: value } }));
   const text = locale === 'de' ? {
-    title: 'Ein Moment für dich.', subtitle: 'Schau kurz zurück. Wie haben sich deine Gewohnheiten heute angefühlt?', close: 'Review schließen', happiness: 'Wie zufrieden bist du?', resistance: 'Wie leicht fiel dir der Anfang?', quality: 'Wie gut hat es sich angefühlt?', easy: 'Sehr leicht', hard: 'Extrem schwer', low: 'Wenig', high: 'Sehr gut', note: 'Was möchtest du mitnehmen?', optional: 'Ein Gedanke, ein Highlight oder etwas, wofür du dankbar bist …', save: 'Review speichern', saved: 'Review aktualisieren', empty: 'Für diesen Tag sind keine Gewohnheiten geplant.', bonus: 'Für deinen gespeicherten Tagesreview erhältst du 5 XP – unabhängig von deinen Bewertungen. Erneutes Speichern vergibt keine weiteren XP.', completed: 'Erledigt', pending: 'Noch offen', negative: 'Bewertung nach Tagesende', scale: ['Sehr schlecht', 'Eher schlecht', 'Neutral', 'Gut', 'Sehr gut'],
+    title: 'Ein Moment für dich.', subtitle: 'Schau kurz zurück. Wie haben sich deine Gewohnheiten heute angefühlt?', happiness: 'Wie zufrieden bist du?', resistance: 'Wie leicht fiel dir der Anfang?', quality: 'Wie gut hat es sich angefühlt?', easy: 'Sehr leicht', hard: 'Extrem schwer', low: 'Wenig', high: 'Sehr gut', note: 'Was möchtest du mitnehmen?', optional: 'Ein Gedanke, ein Highlight oder etwas, wofür du dankbar bist …', save: 'Review speichern', saved: 'Review aktualisieren', empty: 'Für diesen Tag sind keine Gewohnheiten geplant.', bonus: 'Für deinen gespeicherten Tagesreview erhältst du 5 XP – unabhängig von deinen Bewertungen. Erneutes Speichern vergibt keine weiteren XP.', completed: 'Erledigt', pending: 'Noch offen', negative: 'Bewertung nach Tagesende', scale: ['Sehr schlecht', 'Eher schlecht', 'Neutral', 'Gut', 'Sehr gut'],
   } : {
-    title: 'A moment for yourself.', subtitle: 'Take a breath and look back. How did your habits feel today?', close: 'Close review', happiness: 'How happy are you with it?', resistance: 'How easy was it to begin?', quality: 'How well did it go?', easy: 'Very easy', hard: 'Extremely hard', low: 'Low', high: 'Very good', note: 'What will you take with you?', optional: 'A thought, a highlight, or something you are grateful for …', save: 'Save review', saved: 'Update review', empty: 'No habits are scheduled for this day.', bonus: 'Earn 5 XP for saving your daily review, regardless of your ratings. Saving again does not award more XP.', completed: 'Completed', pending: 'Still open', negative: 'Scored after the day ends', scale: ['Very unhappy', 'Unhappy', 'Neutral', 'Happy', 'Very happy'],
+    title: 'A moment for yourself.', subtitle: 'Take a breath and look back. How did your habits feel today?', happiness: 'How happy are you with it?', resistance: 'How easy was it to begin?', quality: 'How well did it go?', easy: 'Very easy', hard: 'Extremely hard', low: 'Low', high: 'Very good', note: 'What will you take with you?', optional: 'A thought, a highlight, or something you are grateful for …', save: 'Save review', saved: 'Update review', empty: 'No habits are scheduled for this day.', bonus: 'Earn 5 XP for saving your daily review, regardless of your ratings. Saving again does not award more XP.', completed: 'Completed', pending: 'Still open', negative: 'Scored after the day ends', scale: ['Very unhappy', 'Unhappy', 'Neutral', 'Happy', 'Very happy'],
   };
   const date = new Intl.DateTimeFormat(locale === 'de' ? 'de-DE' : 'en-GB', { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`));
 
   return <div className="daily-review">
-    <header className="review-sheet-header"><div><p className="eyebrow">DAILY REVIEW · {date}</p><h2>{text.title}</h2></div><button className="mini-button" type="button" onClick={onClose} aria-label={text.close}><X size={20}/></button></header>
+    <header className="review-sheet-header"><div><p className="eyebrow">DAILY REVIEW · {date}</p><h2>{text.title}</h2></div></header>
     <p className="muted review-intro">{text.subtitle}</p>
     <div className="review-bonus-note"><Sparkles size={18}/><span>{text.bonus}</span></div>
     <form onSubmit={event => { event.preventDefault(); onSave({ day, ratings: Object.fromEntries(habits.map(habit => [habit.id, ratings[habit.id] ?? defaultRating()])), note: note.trim(), updatedAt: new Date().toISOString() }); }}>

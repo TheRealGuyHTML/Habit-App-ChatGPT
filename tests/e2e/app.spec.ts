@@ -487,15 +487,15 @@ test('insights list habits individually and deletion moves history into a collap
   await expect(page.locator('.deleted-habits [data-habit-id="demo-water"] .heatmap-summary')).toContainText('6');
 });
 
-test('achievements show one card, select the latest unlock and can be swiped or navigated', async ({ page }, testInfo) => {
+test('achievements show one card, select the next goal and can be swiped or navigated', async ({ page }, testInfo) => {
   await openDemo(page);
   await navigate(page, 'Garten');
   const carousel = page.locator('.achievement-carousel');
   const first = carousel.locator('.achievement-card').first();
   expect((await first.boundingBox())!.width).toBeCloseTo((await carousel.boundingBox())!.width, 0);
-  await expect(page.locator('.achievement-controls')).toContainText('1 / 5');
-  await page.getByRole('button', { name: 'Nächster Erfolg' }).click();
   await expect(page.locator('.achievement-controls')).toContainText('2 / 5');
+  await page.getByRole('button', { name: 'Nächster Erfolg' }).click();
+  await expect(page.locator('.achievement-controls')).toContainText('3 / 5');
   await carousel.evaluate(element => element.scrollTo({ left: element.clientWidth * 3, behavior: 'instant' }));
   await expect(page.locator('.achievement-controls')).toContainText('4 / 5');
   expect((await page.locator('.level-guide').boundingBox())!.height).toBeLessThan(350);
@@ -504,7 +504,7 @@ test('achievements show one card, select the latest unlock and can be swiped or 
   await navigate(page, 'Heute');
   for (let index = 0; index < 14; index++) await habitCard(page, 'Wasser trinken').getByRole('button', { name: '100 ml hinzufügen' }).click();
   await navigate(page, 'Garten');
-  await expect(page.locator('.achievement-controls')).toContainText('2 / 5');
+  await expect(page.locator('.achievement-controls')).toContainText('3 / 5');
 });
 
 
@@ -559,4 +559,70 @@ test('habit heatmaps are flat, number-free and navigate history with seven weekd
   await card.getByRole('button', { name: 'Spätere Wochen' }).click();
   await expect(grid.locator('[data-day="2026-11-10"]')).toHaveClass(/done/);
   await expect(card.getByRole('button', { name: 'Spätere Wochen' })).toBeDisabled();
+});
+
+
+test('review time stays inside its card and an automatic review has exactly one close control', async ({ page }, testInfo) => {
+  await openDemo(page);
+  await navigate(page, 'Einstellungen');
+  await page.getByRole('switch', { name: /Daily Review/ }).check();
+  await page.getByRole('combobox', { name: 'Sprache', exact: true }).selectOption('en');
+  const input = page.getByLabel('My review time', { exact: true });
+  await input.fill('13:01');
+  for (const width of [320, 390, 820]) {
+    await page.setViewportSize({ width, height: 1000 });
+    const bounds = await input.evaluate(element => {
+      const parent = element.closest('.settings-section')!;
+      const box = parent.getBoundingClientRect();
+      const field = element.getBoundingClientRect();
+      const css = getComputedStyle(parent);
+      return { left: field.left, right: field.right, availableLeft: box.left + parseFloat(css.paddingLeft), availableRight: box.right - parseFloat(css.paddingRight), viewport: innerWidth, page: document.documentElement.scrollWidth };
+    });
+    expect(bounds.left).toBeGreaterThanOrEqual(bounds.availableLeft - 1);
+    expect(bounds.right).toBeLessThanOrEqual(bounds.availableRight + 1);
+    expect(bounds.page).toBeLessThanOrEqual(bounds.viewport);
+    await input.screenshot({ path: testInfo.outputPath(`review-time-${width}.png`) });
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.clock.runFor(65_000);
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('.lucide-x')).toHaveCount(1);
+  await expect(dialog.getByRole('button', { name: 'Close review', exact: true })).toHaveCount(1);
+  await dialog.getByRole('button', { name: 'Close review', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(input).toHaveValue('13:01');
+  await page.reload();
+  await expect(page.getByRole('dialog').getByRole('button', { name: 'Close review', exact: true })).toHaveCount(1);
+  await page.getByRole('dialog').getByRole('button', { name: 'Close review', exact: true }).click();
+  await navigate(page, 'Settings');
+  await expect(page.getByLabel('My review time', { exact: true })).toHaveValue('13:01');
+});
+
+test('custom special functions describe tools and keep existing timer configurations', async ({ page }) => {
+  await openDemo(page);
+  let editor = await openEditor(page);
+  await editor.getByLabel('Name', { exact: true }).fill('Eigene Liste');
+  await editor.getByRole('switch', { name: /Spezial-Tracker aktivieren/ }).check();
+  const functions = editor.getByRole('combobox', { name: 'Spezialfunktion', exact: true });
+  await expect(functions.locator('option')).toHaveText(['Mengenzähler (ml)', 'Dauer-Eingabe (Stunden)', 'Zahleneingabe', 'Liste', 'Zähler (Stück)', 'Einheiten-Tracker (Seiten/Minuten)', 'Zeitlimit', 'Timer', 'Stimmung & Text', 'Distanzzähler & Stoppuhr']);
+  await functions.selectOption({ label: 'Liste' });
+  await editor.getByLabel('Unterpunkte (ein Eintrag pro Zeile)').fill('Punkt A\nPunkt B');
+  await editor.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await habitCard(page, 'Eigene Liste').getByRole('button', { name: 'Tracker öffnen: Eigene Liste' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: /Unteraufgaben/ }).click();
+  await page.getByRole('dialog').getByRole('checkbox', { name: 'Punkt A' }).check();
+  await page.getByRole('dialog').getByRole('button', { name: 'Fertig', exact: true }).click();
+  const state = createInitialState('de', 'Europe/Berlin');
+  state.onboarded = true;
+  const habit = createHabit({ ...configFromTemplate(templates.find(item => item.kind === 'meditation')!), custom: true, special: true, target: 17, name: 'Bestehender Timer' }, '2026-11-11', 'custom-timer');
+  state.habits[habit.id] = habit;
+  await importFixture(page, state);
+  await habitCard(page, habit.name).getByRole('button', { name: `Aktionen: ${habit.name}` }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Bearbeiten', exact: true }).click();
+  editor = page.getByRole('dialog');
+  await expect(editor.getByRole('combobox', { name: 'Spezialfunktion', exact: true })).toHaveValue('language');
+  await expect(editor.getByLabel('Dein Ziel', { exact: true })).toHaveValue('17');
+  await editor.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await expect(habitCard(page, habit.name)).toContainText('17:00');
 });
