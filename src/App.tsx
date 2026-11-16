@@ -3,7 +3,7 @@ import { ArrowRight, BookOpen, Check, CircleAlert, Cloud, CloudOff, Home as Home
 import { calculateGamification, configForDay, createDemoState, createEntry, createHabit, createInitialState, entryKey, isComplete, isScheduled, localDay, stateSchema, togglePause, updateHabit } from './domain';
 import type { Day, Entry, Habit, HabitConfig, Locale, Review } from './domain/types';
 import { useAppStore } from './services/useAppStore';
-import { registerServiceWorker, showForegroundReminder } from './services/notifications';
+import { enablePush, registerServiceWorker, showForegroundReminder } from './services/notifications';
 import { reconcileTimers } from './components/trackers/timer';
 import { Onboarding } from './components/Onboarding';
 import { Flower } from './components/Flower';
@@ -31,6 +31,15 @@ export default function App() {
   const [day, setDay] = useState<Day>(() => localDay());
   const previousToday = useRef(today);
   const accountKey = store.user?.uid ?? 'local';
+  const activeAccount = useRef(accountKey);
+  activeAccount.current = accountKey;
+  const enableReminders = async () => {
+    const owner = accountKey;
+    const result = await enablePush();
+    if (activeAccount.current !== owner) throw new Error('Konto gewechselt. / Account changed.');
+    if (!update(current => ({ ...current, settings: { ...current.settings, notificationsEnabled: true } }))) throw new Error('Einstellung konnte nicht gespeichert werden. / Could not save preference.');
+    return result;
+  };
   const [storedPanel, setStoredPanel] = useState<{ account: string; value: Panel } | null>(null);
   const panel = storedPanel?.account === accountKey ? storedPanel.value : null;
   const setPanel = useCallback((value: Panel) => setStoredPanel(value ? { account: accountKey, value } : null), [accountKey]);
@@ -198,7 +207,7 @@ export default function App() {
     {store.error && <div role="alert" className="global-error"><CircleAlert size={18} /><div><b>{t(locale, 'error')}</b><p>{store.error}</p></div><button className="text-button" onClick={store.retrySync}>{de ? 'Erneut versuchen' : 'Retry'}</button><button className="icon-button" aria-label={t(locale, 'close')} onClick={store.clearError}><X size={15} /></button></div>}
     {toast && <div className="toast" role="status"><Check size={16} />{toast}</div>}
     {panel && <Modal key={accountKey} onClose={close} label={panel.type === 'editor' ? t(locale, panel.habit ? 'editHabit' : 'addHabit') : panel.type === 'review' ? t(locale, 'review') : t(locale, 'actions')} wide={panel.type === 'review'} closeLabel={panel.type === 'review' ? (de ? 'Review schließen' : 'Close review') : t(locale, 'close')}>
-      {panel.type === 'editor' && <HabitEditor habit={panel.habit} today={today} locale={locale} onSave={saveHabit} onCancel={close} />}
+      {panel.type === 'editor' && <HabitEditor habit={panel.habit} today={today} locale={locale} onSave={saveHabit} onCancel={close} onEnableReminders={enableReminders} />}
       {panel.type === 'review' && <DailyReview state={state} day={day > today ? today : day} locale={locale} onSave={saveReview} />}
       {panel.type === 'journal' && <div className="action-sheet"><span className="eyebrow">{de ? 'EIN MOMENT ZUM INNEHALTEN' : 'A MOMENT TO REFLECT'}</span><h2>{configForDay(panel.habit, day).name}</h2><Tracker habit={{ ...panel.habit, ...configForDay(panel.habit, day) }} entry={state.entries[entryKey(panel.habit.id, day)] || createEntry(panel.habit.id, day, state.settings.timeZone)} day={day} today={today} locale={locale} onChange={patch => changeEntry(panel.habit, patch)} /><button className="primary-button full-width" style={{ marginTop: 22 }} onClick={close}><Check size={16} />{de ? 'Fertig' : 'Done'}</button></div>}
       {panel.type === 'add' && <div className="action-sheet"><span className="eyebrow">{de ? 'DEIN NÄCHSTER SCHRITT' : 'YOUR NEXT STEP'}</span><h2>{de ? 'Was möchtest du tun?' : 'What would you like to do?'}</h2><button className="action-option" onClick={addHabit}><span className="action-icon"><Plus size={22} /></span><div><b>{t(locale, 'addHabit')}</b><p>{de ? 'Etwas Gutes in deinen Alltag bringen.' : 'Bring something good to your day.'}</p></div><ArrowRight size={17} /></button><button className="action-option" onClick={() => { if (day > today) setDay(today); setPanel({ type: 'review' }); }}><span className="action-icon sage"><BookOpen size={21} /></span><div><b>{t(locale, 'review')}</b><p>{de ? 'Innehalten und den Tag reflektieren.' : 'Pause and reflect on your day.'}</p></div><ArrowRight size={17} /></button></div>}

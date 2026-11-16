@@ -1,5 +1,17 @@
 # Implementierungsplan
 
+## Direkte Push-Aktivierung bei Habit-Erinnerungen (16.11.2026)
+
+- [x] Berechtigungsanfrage synchron aus dem Habit-Schalter; keine Anfrage beim Laden oder Speichern.
+- [x] Gewährte Berechtigung wiederverwenden, parallele Aktivierungen zusammenfassen, Subscription wiederverwenden/bei Schlüsselwechsel erneuern.
+- [x] Globale Erinnerungseinstellung nach Zustimmung aktualisieren; Status zwischen Vordergrund und bestätigtem Hintergrund-Push unterscheiden.
+- [x] Ablehnung, fehlende Anmeldung/VAPID, Offline-/Subscription-/Firestore-Fehler anzeigen; Habit und Uhrzeit bleiben unabhängig speicherbar.
+- [x] Erneute Aktivierung beim Bearbeiten und nach Anmeldung; einzelne Deaktivierung lässt andere Habits, Reviews und Subscription bestehen.
+- [x] Kontowechsel während laufender Aktivierung abgesichert. Keine Änderungen an Historie, Rules oder Cloud Functions.
+
+Verifiziert: TypeScript, ESLint und Produktions-Build erfolgreich; 120 Root-Tests und alle 24 Browserfälle bestanden. Push-Tests prüfen synchrone Berechtigungsanfrage, bereits erteilte/abgelehnte Berechtigung, fehlende Anmeldung/VAPID, Offline-, Subscription-, Service-Worker- und Firestore-Fehler, Wiederverwendung, parallele Aktivierung und Kontowechsel. Browserfälle prüfen den aktiven Nutzer-Gesten-Kontext, mehrere Erinnerungszeiten, Bearbeitung, isolierte Deaktivierung und Speichern bei Ablehnung. Browser-Push ist dabei kontrolliert simuliert; reale iOS-/APNs-Abnahme bleibt extern. Zum Ausführen: `npm ci && npm run dev`. Veröffentlichung: Frontend nach Merge auf Cloudflare neu bauen; bestehende Firebase-/VAPID-/Functions-Konfiguration weiterverwenden, keine Backend-Änderung nötig (Einrichtung siehe `docs/DEPLOYMENT.md`).
+
+
 ## Weitere UI-Korrekturen: Zeitfeld, Review, Ziele und Funktionsnamen
 
 - [x] Native Zeit-/Datumsfelder mit Safari-tauglichen Breitenbegrenzungen; Review-Zeitfeld bleibt in seiner Karte.

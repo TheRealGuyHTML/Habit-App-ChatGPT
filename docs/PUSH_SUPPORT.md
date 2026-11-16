@@ -12,7 +12,7 @@ Bloom verwendet eine **standardbasierte Web-Push-Implementierung mit VAPID**. Fi
 
 ## Implementierung
 
-1. Nur der Button in Einstellungen ruft `Notification.requestPermission()` auf. Beim Start oder Onboarding gibt es keine Berechtigungsfrage.
+1. Der Habit-Schalter „Persönliche Erinnerung“ sowie explizite Aktivierungsbuttons in Editor/Einstellungen rufen bei noch offener Berechtigung unmittelbar `Notification.requestPermission()` auf. Bereits erteilte/abgelehnte Berechtigungen werden ohne erneuten Prompt respektiert. Beim Start oder Onboarding gibt es keine Berechtigungsfrage.
 2. `PushManager.subscribe()` registriert das Gerät; die Subscription wird unter dem angemeldeten Nutzer in Firestore gespeichert. Der öffentliche VAPID-Schlüssel darf im Frontend stehen; der private Schlüssel steht ausschließlich in Google Secret Manager.
 3. `sendHabitReminders` läuft minütlich in `europe-west1`, berechnet die lokale Uhrzeit anhand der IANA-Zeitzone des Profils und prüft den historischen Habit-Zeitplan. Erinnerungen werden innerhalb eines fünfminütigen Verspätungsfensters zugestellt.
 4. Pro lokalem Tag, Erinnerung und Subscription gibt es eine deterministische Zustellungsquittung. Eine Transaktions-Lease verhindert parallele Sendungen; Fehler werden höchstens dreimal erneut versucht. Ein identischer Notification-Tag fasst Wiederholungen am Gerät zusammen. Bei 404/410 wird die Subscription gelöscht. Eine Netzwerkunterbrechung nach erfolgreichem Senden, aber vor dem Schreiben der Quittung kann dennoch eine erneute Transportzustellung verursachen; Web Push bietet kein exakt-einmaliges Transportversprechen.
@@ -45,3 +45,6 @@ Optional in Firestore für die Collection Group `notificationReceipts` eine TTL-
 - Ein Wechsel der Zeitzone wirkt auf neue Tageszuordnungen und zukünftige Reminder. Vorhandene Einträge behalten ihren gespeicherten Kalendertag und ihre ursprüngliche Zeitzone.
 
 Automatisierte Tests prüfen Push-Endpunktvalidierung, lokale Uhrzeiten, DST und Firestore-Zugriffsregeln. Echte APNs-/iPhone-Zustellung und Cloud-Scheduler-Betrieb benötigen ein konfiguriertes Projekt und ein reales installiertes Gerät und sind in der nicht konfigurierten Demo nicht überprüft.
+
+
+Aktivierungen werden über eine gemeinsame laufende Promise zusammengefasst. Bestehende Geräte-Subscriptions werden wiederverwendet bzw. bei geändertem VAPID-Schlüssel erneuert. Eine Erfolgsmeldung erfordert bestätigte Firestore-Speicherung; Offline-/Speicherfehler bleiben sichtbar, ein ausstehender Schreibzugriff hat eine 12-Sekunden-Grenze. Kontoänderungen und globale Deaktivierung brechen den Abschluss ab. `notificationsEnabled` ist weiterhin eine kontoweite Erinnerungseinstellung, kein Nachweis einer Geräte-Subscription; bei erteilter Berechtigung kann sie auch den ausdrücklich ausgewiesenen Vordergrundmodus aktivieren. Eine einzelne Habit-Deaktivierung ändert nur dessen Uhrzeit. Nach Anmeldung steht die erneute Geräteaktivierung im Editor oder in den Einstellungen bereit. Reale APNs-Zustellung wurde hier nicht getestet.

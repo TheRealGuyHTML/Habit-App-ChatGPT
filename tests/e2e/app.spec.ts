@@ -626,3 +626,52 @@ test('custom special functions describe tools and keep existing timer configurat
   await editor.getByRole('button', { name: 'Speichern', exact: true }).click();
   await expect(habitCard(page, habit.name)).toContainText('17:00');
 });
+
+test('habit reminders activate permission in the editor, preserve different times and disable only one habit', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.assign(window, { pushRequests: 0, pushGesture: false });
+    Object.defineProperty(window, 'Notification', { configurable: true, value: { permission: 'default', requestPermission() {
+      const state = window as unknown as { pushRequests: number; pushGesture: boolean };
+      state.pushRequests++; state.pushGesture = navigator.userActivation.isActive;
+      this.permission = 'granted'; return Promise.resolve('granted');
+    } } });
+  });
+  await openDemo(page);
+  for (const [name, time] of [['Reminder A', '09:15'], ['Reminder B', '10:30']]) {
+    const editor = await openEditor(page);
+    await editor.getByLabel('Name', { exact: true }).fill(name);
+    await editor.getByRole('switch', { name: /Persönliche Erinnerung/ }).check();
+    await expect(editor.getByRole('status')).toContainText('Nur bei geöffneter App');
+    await editor.getByLabel('Erinnere mich um', { exact: true }).fill(time);
+    await editor.getByRole('button', { name: 'Speichern', exact: true }).click();
+  }
+  expect(await page.evaluate(() => (window as unknown as { pushRequests: number }).pushRequests)).toBe(1);
+  expect(await page.evaluate(() => (window as unknown as { pushGesture: boolean }).pushGesture)).toBe(true);
+  await habitCard(page, 'Reminder A').getByRole('button', { name: 'Aktionen: Reminder A' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Bearbeiten', exact: true }).click();
+  await expect(page.getByLabel('Erinnere mich um', { exact: true })).toHaveValue('09:15');
+  await page.getByRole('switch', { name: /Persönliche Erinnerung/ }).uncheck();
+  await page.getByRole('dialog').getByRole('button', { name: 'Speichern', exact: true }).click();
+  await navigate(page, 'Einstellungen');
+  await expect(page.getByRole('switch', { name: /^Erinnerungen/ })).toBeChecked();
+  await navigate(page, 'Heute');
+  await habitCard(page, 'Reminder B').getByRole('button', { name: 'Aktionen: Reminder B' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Bearbeiten', exact: true }).click();
+  await expect(page.getByLabel('Erinnere mich um', { exact: true })).toHaveValue('10:30');
+});
+
+test('denied permission does not block editing or lose the chosen reminder time', async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(window, 'Notification', { configurable: true, value: { permission: 'denied', requestPermission() { throw new Error('Must not ask twice'); } } }));
+  await openDemo(page);
+  const editor = await openEditor(page);
+  await editor.getByLabel('Name', { exact: true }).fill('Denied reminder');
+  await editor.getByRole('switch', { name: /Persönliche Erinnerung/ }).check();
+  await expect(editor.getByRole('status')).toContainText('Push nicht aktiviert');
+  await editor.getByLabel('Erinnere mich um', { exact: true }).fill('11:45');
+  await editor.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await page.reload();
+  await habitCard(page, 'Denied reminder').getByRole('button', { name: 'Aktionen: Denied reminder' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Bearbeiten', exact: true }).click();
+  await expect(page.getByLabel('Erinnere mich um', { exact: true })).toHaveValue('11:45');
+  await expect(page.getByRole('button', { name: 'Benachrichtigungen aktivieren / erneut prüfen' })).toBeVisible();
+});
