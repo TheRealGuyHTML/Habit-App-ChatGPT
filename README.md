@@ -8,7 +8,7 @@ Der konkrete Fortschritt, Testergebnisse und offene externe Prüfungen stehen in
 
 ## Lokal starten 
 
-Voraussetzung: Node.js 22.12 oder neuer und npm. 
+Voraussetzung: Node.js 22.12 oder neuer und npm.
 
 ```bash
 npm install
