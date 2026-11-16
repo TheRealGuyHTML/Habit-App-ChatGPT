@@ -6,7 +6,7 @@ TypeScript, Lint, Produktions-Build, 105 Root-Tests und 33 Backend-/Firestore-Em
 
 Der konkrete Fortschritt, Testergebnisse und offene externe Prüfungen stehen in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Architekturentscheidungen: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## Lokal starten
+## Lokal starten 
 
 Voraussetzung: Node.js 22.12 oder neuer und npm.
 
@@ -88,3 +88,4 @@ Die lokale Anwendung ist von externer Infrastruktur unabhängig. Firebase- und C
 Custom Habits können jede Spezialfunktion nutzen. Die Auswahl benennt Werkzeuge wie Liste, Timer oder Zähler statt Habit-Vorlagen. Daily Reviews vergeben einmalig 5 XP pro gespeichertem Tag – unabhängig von Bewertungen und Erledigungen; erneutes Speichern bringt keine weiteren XP. Alle Review-Skalen zeigen 5 als positive Seite. Der frühere Willpower-Bonus entfällt.
 
 Bei einem Update auf diese Version mit Firebase zuerst Regeln und Functions aktualisieren: `npx firebase-tools deploy --only firestore:rules,functions`. Danach das Frontend in Cloudflare neu bereitstellen. Ohne Firebase bleiben alle lokalen Funktionen nutzbar.
+
