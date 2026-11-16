@@ -1,4 +1,4 @@
-# Bloom · Habit-Tracking als iOS-PWA
+# Bloom · Habit-Tracking als iOS- PWA
 
 Eine nutzbare React-/TypeScript-Anwendung nach [Konzeptplan.md](Konzeptplan.md): tägliche Habits, Spezial-Tracker, historische Statistiken, Daily Reviews und ein wachsender virtueller Garten. Ohne Firebase läuft sie mit echter lokaler Datenspeicherung; mit eigener Firebase-Konfiguration kommen Anmeldung und Cloud-Synchronisierung hinzu.
 
