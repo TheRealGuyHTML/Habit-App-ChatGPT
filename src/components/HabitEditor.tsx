@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { Check, ChevronDown, Clock3, Sparkles } from 'lucide-react';
 import type { Day, Habit, HabitConfig, HabitKind, Locale, Schedule } from '../domain/types';
 import { configFromTemplate, templates } from '../domain';
+import type { PushActivation } from '../services/notifications';
 import { t } from '../i18n';
 
-export function HabitEditor({ habit, today, locale, onSave, onCancel }: { habit?: Habit; today: Day; locale: Locale; onSave: (config: HabitConfig) => void; onCancel: () => void }) {
+export function HabitEditor({ habit, today, locale, onSave, onCancel, onEnableReminders }: { habit?: Habit; today: Day; locale: Locale; onSave: (config: HabitConfig) => void; onCancel: () => void; onEnableReminders: () => Promise<PushActivation> }) {
   const de = locale === 'de';
   const [config, setConfig] = useState<HabitConfig>(habit ? { ...habit, ...(habit.kind === 'check' ? { special: false, target: 1, unit: 'minutes' as const, subtasks: [], custom: true } : {}) } : {
     custom: true, name: '', emoji: '✨', kind: 'check', area: 'growth', negative: false, difficulty: 'easy',
@@ -13,6 +14,14 @@ export function HabitEditor({ habit, today, locale, onSave, onCancel }: { habit?
   const [customMode, setCustomMode] = useState(habit?.custom ?? (!habit || habit.kind === 'check'));
   const [subtaskText, setSubtaskText] = useState(config.subtasks.join('\n'));
   const [error, setError] = useState('');
+  const [pushMessage, setPushMessage] = useState('');
+  const [pushBusy, setPushBusy] = useState(false);
+  function activateReminder() {
+    const task = onEnableReminders(); // Starts permission request in this click stack.
+    setPushBusy(true);
+    setPushMessage(de ? 'Benachrichtigungen werden geprüft …' : 'Checking notifications …');
+    void task.then(result => setPushMessage(result.message), failure => setPushMessage(`${de ? 'Push nicht aktiviert: ' : 'Push not enabled: '}${failure instanceof Error ? failure.message : String(failure)}`)).finally(() => setPushBusy(false));
+  }
   function patch(value: Partial<HabitConfig>) { setConfig(current => ({ ...current, ...value })); }
   function schedule(type: Schedule['type']) {
     patch({ schedule: type === 'daily' ? { type } : type === 'once' ? { type, date: today } : type === 'weekdays' ? { type, days: [1, 2, 3, 4, 5] } : { type, every: 2, anchor: today } });
@@ -79,7 +88,8 @@ export function HabitEditor({ habit, today, locale, onSave, onCancel }: { habit?
       {config.schedule.type === 'once' && <label className="field">{de ? 'Am Datum' : 'On date'}<input className="input" type="date" min={today} max="2200-12-31" value={config.schedule.date} onChange={e => patch({ schedule: { type: 'once', date: e.target.value } })} required /></label>}
     </fieldset>
     <fieldset><legend>{de ? 'Wie anspruchsvoll ist es für dich?' : 'How challenging does it feel?'}</legend><div className="difficulty-picker">{(['easy', 'medium', 'complex'] as const).map((difficulty, i) => <button type="button" className={config.difficulty === difficulty ? 'selected' : ''} aria-pressed={config.difficulty === difficulty} key={difficulty} onClick={() => patch({ difficulty })}><b>{(de ? ['Leicht', 'Mittel', 'Komplex'] : ['Easy', 'Medium', 'Complex'])[i]}</b><small>{[10, 25, 50][i]} XP</small></button>)}</div></fieldset>
-    <label className="switch-row"><span><b><Clock3 size={15} /> {de ? 'Persönliche Erinnerung' : 'Personal reminder'}</b><small>{de ? 'Push benötigt einen verbundenen Account und Server.' : 'Push requires a connected account and server.'}</small></span><input type="checkbox" role="switch" checked={Boolean(config.reminder)} onChange={e => patch({ reminder: e.target.checked ? '09:00' : '' })} /></label>
+    <label className="switch-row"><span><b><Clock3 size={15} /> {de ? 'Persönliche Erinnerung' : 'Personal reminder'}</b><small>{de ? 'Aktivieren fragt die Benachrichtigungsberechtigung an.' : 'Enabling checks your notification permission.'}</small></span><input type="checkbox" role="switch" checked={Boolean(config.reminder)} onChange={e => { patch({ reminder: e.target.checked ? '09:00' : '' }); if (e.target.checked) activateReminder(); }} /></label>
+    {config.reminder && <div className="form-note"><p role="status">{pushMessage || (de ? 'Eine Uhrzeit allein bestätigt noch keinen Hintergrund-Push. Berechtigung und Gerät prüfen:' : 'A saved time alone does not confirm background push. Check permission and this device:')}</p><button className="text-button" type="button" disabled={pushBusy} onClick={activateReminder}>{de ? 'Benachrichtigungen aktivieren / erneut prüfen' : 'Enable notifications / check again'}</button></div>}
     {config.reminder && <label className="field">{de ? 'Erinnere mich um' : 'Remind me at'}<input className="input" type="time" value={config.reminder} onChange={e => patch({ reminder: e.target.value })} required /></label>}
     <fieldset><legend>{de ? 'Deine Farbe' : 'Your colour'}</legend><div className="color-picker">{['#a78bfa', '#4ade80', '#f472b6', '#fb923c', '#60a5fa'].map((color, index) => <button type="button" key={color} className={`swatch tone-${['lavender', 'sage', 'rose', 'peach', 'blue'][index]}`} aria-label={color} aria-pressed={config.color === color} onClick={() => patch({ color })}>{config.color === color && <Check size={17} />}</button>)}</div></fieldset>
     {habit && <p className="form-note">{de ? 'Änderungen gelten ab heute. Vergangene Pläne und Einträge bleiben erhalten.' : 'Changes apply from today. Past schedules and entries are preserved.'}</p>}

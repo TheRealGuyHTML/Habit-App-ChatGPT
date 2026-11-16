@@ -52,7 +52,7 @@ Schritte, Schlaf, Bildschirmzeit und Laufdistanz werden manuell erfasst. Timer w
 1. Die HTTPS-Adresse in Safari öffnen.
 2. **Teilen → Zum Home-Bildschirm → Hinzufügen** wählen.
 3. Die App über das neue Symbol starten.
-4. Für Push in der App unter Einstellungen die Benachrichtigungen aktivieren. Die Berechtigung wird erst nach dieser Aktion angefragt.
+4. Für Push im Habit-Editor „Persönliche Erinnerung“ einschalten oder unter Einstellungen die Benachrichtigungen aktivieren. Die Berechtigung wird unmittelbar nach dieser bewussten Aktion angefragt.
 
 Web Push auf iOS benötigt eine unterstützte iOS-Version und eine installierte Home-Screen-Web-App. Details, Herstellerquellen und Fallbacks: [docs/PUSH_SUPPORT.md](docs/PUSH_SUPPORT.md).
 
@@ -89,3 +89,6 @@ Custom Habits können jede Spezialfunktion nutzen. Die Auswahl benennt Werkzeuge
 
 Bei einem Update auf diese Version mit Firebase zuerst Regeln und Functions aktualisieren: `npx firebase-tools deploy --only firestore:rules,functions`. Danach das Frontend in Cloudflare neu bereitstellen. Ohne Firebase bleiben alle lokalen Funktionen nutzbar.
 
+
+
+Beim Einschalten von „Persönliche Erinnerung“ im Habit-Editor startet die Benachrichtigungsaktivierung direkt. Nach Zustimmung werden globale Erinnerungen aktiviert; Hintergrund-Push wird erst nach bestätigter Geräte-Registrierung angezeigt. Ohne Cloud-Anmeldung/Push-Konfiguration erklärt der Editor den Vordergrundmodus. Ablehnung oder Offline-Fehler verhindern das Speichern des Habits und seiner Uhrzeit nicht; im Editor kann die Aktivierung erneut geprüft werden. Das Ausschalten einer einzelnen Habit-Erinnerung entfernt keine Geräte-Subscription. Für dieses Editor-Update genügt bei bereits eingerichtetem Push-Backend ein neuer Cloudflare-Frontend-Build; Functions und Rules werden dadurch nicht geändert.
