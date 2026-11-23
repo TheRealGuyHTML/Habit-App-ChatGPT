@@ -4,6 +4,7 @@ import { calculateGamification, configForDay, createDemoState, createEntry, crea
 import type { Day, Entry, Habit, HabitConfig, Locale, Review } from './domain/types';
 import { useAppStore } from './services/useAppStore';
 import { enablePush, registerServiceWorker, showForegroundReminder } from './services/notifications';
+import { foregroundReminderDue } from './domain/reminders';
 import { reconcileTimers } from './components/trackers/timer';
 import { Onboarding } from './components/Onboarding';
 import { Flower } from './components/Flower';
@@ -48,6 +49,7 @@ export default function App() {
   const [sampleData, setSampleData] = useState(() => { try { return localStorage.getItem('bloom:sample-data') === 'yes'; } catch { return false; } });
   const reviewShown = useRef('');
   const reminderReceipts = useRef(new Set<string>());
+  const reminderClock = useRef<{ context: string; previous: number | null }>({ context: '', previous: null });
   const game = useMemo(() => calculateGamification(state, today), [state, today]);
   const close = useCallback(() => setStoredPanel(null), []);
 
@@ -121,8 +123,12 @@ export default function App() {
   useEffect(() => {
     if (!ready || !state.onboarded) return;
     function checkReminders() {
-      if (document.visibilityState !== 'visible') return;
+      const context = `${accountKey}:${state.settings.timeZone}:${state.settings.notificationsEnabled}`;
+      if (reminderClock.current.context !== context) reminderClock.current = { context, previous: null };
+      if (document.visibilityState !== 'visible') { reminderClock.current.previous = null; return; }
       const now = new Date();
+      const previous = reminderClock.current.previous;
+      reminderClock.current.previous = now.getTime();
       const currentDay = localDay(now, state.settings.timeZone);
       const time = new Intl.DateTimeFormat('en-GB', { timeZone: state.settings.timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now);
       const reviewKey = `${store.user?.uid ?? 'local'}:${currentDay}`;
@@ -134,7 +140,7 @@ export default function App() {
       for (const habit of Object.values(state.habits)) {
         const config = configForDay(habit, currentDay);
         const id = `bloom-reminder:${reviewKey}:${habit.id}`;
-        if (!config.reminder || time < config.reminder || !isScheduled(habit, currentDay) || isComplete(habit, state.entries[entryKey(habit.id, currentDay)], currentDay, currentDay) || reminderReceipts.current.has(id)) continue;
+        if (!foregroundReminderDue(previous, now, state.settings.timeZone, config.reminder) || !isScheduled(habit, currentDay) || isComplete(habit, state.entries[entryKey(habit.id, currentDay)], currentDay, currentDay) || reminderReceipts.current.has(id)) continue;
         // Persist delivery receipt across reloads. Background delivery is server-owned.
         try { if (localStorage.getItem(id)) continue; localStorage.setItem(id, 'sent'); } catch { /* In-memory receipt still prevents repeated prompts this session. */ }
         reminderReceipts.current.add(id);
@@ -143,9 +149,11 @@ export default function App() {
     }
     checkReminders();
     const timer = window.setInterval(checkReminders, 30_000);
-    document.addEventListener('visibilitychange', checkReminders);
-    return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', checkReminders); };
-  }, [ready, state, panel, store.user?.uid, de, setPanel]);
+    const resetClock = () => { reminderClock.current.previous = null; checkReminders(); };
+    document.addEventListener('visibilitychange', resetClock);
+    window.addEventListener('pageshow', resetClock);
+    return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', resetClock); window.removeEventListener('pageshow', resetClock); };
+  }, [ready, state, panel, store.user?.uid, accountKey, de, setPanel]);
 
   function changeEntry(habit: Habit, patch: Partial<Entry>, targetDay = day) {
     if (targetDay > today || !isScheduled(habit, targetDay)) return;
