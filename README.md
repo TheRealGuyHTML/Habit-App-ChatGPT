@@ -92,3 +92,5 @@ Bei einem Update auf diese Version mit Firebase zuerst Regeln und Functions aktu
 
 
 Beim Einschalten von „Persönliche Erinnerung“ im Habit-Editor startet die Benachrichtigungsaktivierung direkt. Nach Zustimmung werden globale Erinnerungen aktiviert; Hintergrund-Push wird erst nach bestätigter Geräte-Registrierung angezeigt. Ohne Cloud-Anmeldung/Push-Konfiguration erklärt der Editor den Vordergrundmodus. Ablehnung oder Offline-Fehler verhindern das Speichern des Habits und seiner Uhrzeit nicht; im Editor kann die Aktivierung erneut geprüft werden. Das Ausschalten einer einzelnen Habit-Erinnerung entfernt keine Geräte-Subscription. Für dieses Editor-Update genügt bei bereits eingerichtetem Push-Backend ein neuer Cloudflare-Frontend-Build; Functions und Rules werden dadurch nicht geändert.
+
+Lokale Habit-Erinnerungen werden beim Öffnen oder Wiederaufnehmen nicht nachgeholt. Sie erscheinen nur beim Erreichen der eingestellten Uhrzeit in der bereits sichtbaren App; Hintergrund-Push benötigt weiterhin das konfigurierte Backend. Der optionale Daily-Review-Dialog behält seine eigene Tageslogik.

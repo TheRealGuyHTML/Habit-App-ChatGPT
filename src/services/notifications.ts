@@ -88,7 +88,7 @@ export async function sendTestNotification(): Promise<void> {
   await registration.showNotification('Bloom · Zeit für dich', { body: 'Ein kleiner Schritt zählt. / One small step counts.', icon: '/icon-192.png', tag: 'bloom-test' });
 }
 
-/** In-app fallback: evaluate on resume and once per minute, never claim background reliability. */
+/** Best-effort foreground delivery; caller excludes startup/resume catch-up alarms. */
 export function showForegroundReminder(title: string, body: string, tag: string): void {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   void navigator.serviceWorker?.ready.then(registration => registration.showNotification(title, { body, icon: '/icon-192.png', tag })).catch(() => { /* Foreground delivery is best-effort; explicit test/activation reports errors. */ });

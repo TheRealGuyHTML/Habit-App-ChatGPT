@@ -675,3 +675,46 @@ test('denied permission does not block editing or lose the chosen reminder time'
   await expect(page.getByLabel('Erinnere mich um', { exact: true })).toHaveValue('11:45');
   await expect(page.getByRole('button', { name: 'Benachrichtigungen aktivieren / erneut prüfen' })).toBeVisible();
 });
+
+test('foreground reminders never catch up on startup or resume but fire once at the scheduled time', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.assign(window, { reminderTitles: [] as string[] });
+    Object.defineProperty(window, 'Notification', { configurable: true, value: { permission: 'granted' } });
+    // Observe actual app delivery calls without relying on OS notification permission.
+    Object.defineProperty(ServiceWorkerRegistration.prototype, 'showNotification', { configurable: true, value: async (title: string) => {
+      (window as unknown as { reminderTitles: string[] }).reminderTitles.push(title);
+    } });
+  });
+  await openDemo(page);
+  await page.evaluate(() => navigator.serviceWorker.ready.then(() => undefined));
+  for (const [name, time] of [['Past', '12:59'], ['Current minute', '13:00'], ['On time', '13:01'], ['While hidden', '13:02']]) {
+    const editor = await openEditor(page);
+    await editor.getByLabel('Name', { exact: true }).fill(name);
+    await editor.getByRole('switch', { name: /Persönliche Erinnerung/ }).check();
+    await expect(editor.getByRole('status')).toContainText('Nur bei geöffneter App');
+    await editor.getByLabel('Erinnere mich um', { exact: true }).fill(time);
+    await editor.getByRole('button', { name: 'Speichern', exact: true }).click();
+  }
+  const titles = () => page.evaluate(() => (window as unknown as { reminderTitles: string[] }).reminderTitles);
+  expect(await titles()).toEqual([]);
+  await page.reload();
+  await expect(habitCard(page, 'On time')).toBeVisible();
+  expect(await titles()).toEqual([]);
+  await page.clock.runFor(70_000);
+  await expect.poll(titles).toEqual(['✨ On time']);
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await page.clock.runFor(65_000);
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await page.clock.runFor(30_000);
+  expect(await titles()).toEqual(['✨ On time']);
+  await page.reload();
+  await expect(habitCard(page, 'While hidden')).toBeVisible();
+  await page.clock.runFor(30_000);
+  expect(await titles()).toEqual([]);
+});

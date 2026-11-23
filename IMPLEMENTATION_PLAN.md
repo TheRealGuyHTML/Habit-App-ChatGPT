@@ -1,5 +1,15 @@
 # Implementierungsplan
 
+## Keine nachgeholten Habit-Erinnerungen beim Öffnen (23.11.2026)
+
+- [x] Ursache: bisher genügte jede bereits vergangene Erinnerungsuhrzeit für eine lokale Benachrichtigung beim Start/Resume.
+- [x] Vordergrund-Erinnerungen nur beim beobachteten Wechsel in die geplante Minute; Start/Reload, Sichtbarkeitswechsel, BFCache-Rückkehr und Ausführungspausen über 60 Sekunden setzen die Zeitbasis zurück.
+- [x] Zeitbasis bei Konto-, Zeitzonen- und globalem Einstellungswechsel trennen; bestehende Tagesbelege und Habit-Historie erhalten.
+- [x] Annahme: Gemeint sind Habit-Systembenachrichtigungen. Optionaler Daily-Review-Dialog bleibt nach seiner eingestellten Uhrzeit verfügbar. Hintergrund-Push und begrenztes serverseitiges Verspätungsfenster bleiben erhalten.
+- [x] Regressionstests für Start/Reload, Hintergrund-Rückkehr, pünktliche einmalige Zustellung sowie Zeitzonen, Mitternacht und Sommer-/Winterzeit ergänzt.
+
+Verifiziert: TypeScript, ESLint und Produktions-Build erfolgreich; alle 123 Root-Tests und 25 Chromium-Browserfälle bestanden. Der neue Browserfall beobachtet Systembenachrichtigungsaufrufe mit simuliertem OS-Transport. Lokal starten: `npm ci && npm run dev`. Nach Merge Cloudflare-Frontend neu bereitstellen; keine Functions-/Rules-Änderung erforderlich. Physische iPhone-/APNs-Prüfung bleibt extern.
+
 ## Direkte Push-Aktivierung bei Habit-Erinnerungen (16.11.2026)
 
 - [x] Berechtigungsanfrage synchron aus dem Habit-Schalter; keine Anfrage beim Laden oder Speichern.
